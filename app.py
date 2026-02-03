@@ -8,12 +8,16 @@ import json
 import subprocess
 import threading
 import webbrowser
+import tempfile
 from flask import Flask, render_template, request, jsonify, send_file, Response
 import webview
+import requests
+from packaging import version as pkg_version
 
 from downloader import YouTubeDownloader, download_async
 from config import config
 from folder_manager import folder_manager
+from version import __version__, __app_name__, __github_repo__
 
 # Flask app setup
 app = Flask(__name__)
@@ -28,6 +32,14 @@ progress_store = {
     'progress': 0,
     'message': '',
     'filename': '',
+    'filepath': ''
+}
+
+# Store for update download progress
+update_progress_store = {
+    'status': 'idle',
+    'progress': 0,
+    'message': '',
     'filepath': ''
 }
 
@@ -594,6 +606,198 @@ def open_content_folder():
         return jsonify({'success': False, 'error': str(e)})
 
 
+# ===== Update API =====
+
+@app.route('/api/version')
+def get_version():
+    """Get current app version"""
+    return jsonify({
+        'success': True,
+        'version': __version__,
+        'app_name': __app_name__
+    })
+
+
+@app.route('/api/check-update')
+def check_update():
+    """Check for updates from GitHub releases"""
+    try:
+        url = f"https://api.github.com/repos/{__github_repo__}/releases/latest"
+        response = requests.get(url, timeout=10)
+
+        if response.status_code == 404:
+            return jsonify({
+                'success': True,
+                'has_update': False,
+                'current': __version__,
+                'message': 'No releases found'
+            })
+
+        if response.ok:
+            latest = response.json()
+            latest_version = latest['tag_name'].lstrip('v')
+
+            try:
+                has_update = pkg_version.parse(latest_version) > pkg_version.parse(__version__)
+            except:
+                has_update = False
+
+            # Find installer asset (prefer exe, fallback to msi)
+            download_url = None
+            asset_name = None
+            for asset in latest.get('assets', []):
+                name = asset['name']
+                # Support both .exe and .msi installers
+                if (name.endswith('.exe') and 'Setup' in name) or name.endswith('.msi'):
+                    download_url = asset['browser_download_url']
+                    asset_name = name
+                    # Prefer .exe if available, but accept .msi
+                    if name.endswith('.exe'):
+                        break
+
+            return jsonify({
+                'success': True,
+                'current': __version__,
+                'latest': latest_version,
+                'has_update': has_update,
+                'download_url': download_url,
+                'asset_name': asset_name,
+                'release_notes': latest.get('body', ''),
+                'release_url': latest.get('html_url', '')
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'GitHub API error: {response.status_code}'
+            })
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'success': False,
+            'error': 'Connection timeout'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@app.route('/api/download-update', methods=['POST'])
+def download_update():
+    """Download update installer"""
+    global update_progress_store
+
+    data = request.get_json()
+    download_url = data.get('download_url', '')
+    asset_name = data.get('asset_name', 'ClickClipDown_Setup.exe')
+
+    if not download_url:
+        return jsonify({'success': False, 'error': 'Download URL is required'})
+
+    # Reset progress
+    update_progress_store = {
+        'status': 'downloading',
+        'progress': 0,
+        'message': 'Starting download...',
+        'filepath': ''
+    }
+
+    def download_installer():
+        global update_progress_store
+        try:
+            # Create temp directory for download
+            temp_dir = tempfile.gettempdir()
+            filepath = os.path.join(temp_dir, asset_name)
+
+            # Download with progress
+            response = requests.get(download_url, stream=True, timeout=300)
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded_size = 0
+
+            with open(filepath, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        if total_size > 0:
+                            progress = int((downloaded_size / total_size) * 100)
+                            update_progress_store.update({
+                                'status': 'downloading',
+                                'progress': progress,
+                                'message': f'Downloading... {downloaded_size // 1024 // 1024}MB / {total_size // 1024 // 1024}MB'
+                            })
+
+            update_progress_store.update({
+                'status': 'completed',
+                'progress': 100,
+                'message': 'Download completed',
+                'filepath': filepath
+            })
+        except Exception as e:
+            update_progress_store.update({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    # Start download in background
+    thread = threading.Thread(target=download_installer)
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({'success': True, 'message': 'Download started'})
+
+
+@app.route('/api/update-progress')
+def get_update_progress():
+    """Get update download progress"""
+    return jsonify(update_progress_store)
+
+
+@app.route('/api/install-update', methods=['POST'])
+def install_update():
+    """Launch installer and exit app"""
+    global update_progress_store
+
+    filepath = update_progress_store.get('filepath', '')
+
+    if not filepath or not os.path.isfile(filepath):
+        return jsonify({'success': False, 'error': 'Installer not found'})
+
+    try:
+        # Launch installer
+        if sys.platform == 'win32':
+            if filepath.endswith('.msi'):
+                # MSI files need to be run with msiexec
+                subprocess.Popen(
+                    ['msiexec', '/i', filepath],
+                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                    close_fds=True
+                )
+            else:
+                # EXE files can be run directly
+                subprocess.Popen(
+                    [filepath],
+                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                    close_fds=True
+                )
+        else:
+            subprocess.Popen([filepath], start_new_session=True)
+
+        # Exit app after small delay
+        def exit_app():
+            import time
+            time.sleep(1)
+            os._exit(0)
+
+        thread = threading.Thread(target=exit_app)
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({'success': True, 'message': 'Installer launched, app will exit'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 @app.route('/api/rename-default-folder', methods=['POST'])
 def rename_default_folder():
     """Rename the default folder"""
@@ -693,6 +897,10 @@ def main():
 
     # Create PyWebView window
     api = Api()
+
+    # Get icon path
+    icon_path = os.path.join(os.path.dirname(__file__), 'static', 'img', 'logo.png')
+
     window = webview.create_window(
         'ClickClipDown',
         'http://127.0.0.1:5000',
@@ -700,11 +908,13 @@ def main():
         height=750,
         min_size=(900, 600),
         js_api=api,
-        confirm_close=True
+        confirm_close=True,
+        background_color='#2c2c2e'
     )
 
     # Start PyWebView (debug=True enables F12 developer tools)
-    webview.start(debug=True)
+    # Note: icon parameter is passed to webview.start() in PyWebView 6.x
+    webview.start(debug=True, icon=icon_path)
 
 
 if __name__ == '__main__':

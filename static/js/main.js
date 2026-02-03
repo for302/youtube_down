@@ -27,6 +27,10 @@ let appSettings = {
     default_folder: '00_Inbox'
 };
 
+// Update State
+let updateInfo = null;
+let updateProgressInterval = null;
+
 // Search & Filter State
 let searchQuery = '';
 let platformFilters = ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'other'];
@@ -89,9 +93,13 @@ document.addEventListener('DOMContentLoaded', function() {
     initFolderManagement();
     initContextMenu();
     initDragAndDrop();
+    initUpdateSystem();
 
     // Load folders on startup (sidebar always visible)
     loadFolders();
+
+    // Check for updates on startup (after a short delay)
+    setTimeout(checkForUpdates, 2000);
 });
 
 function initNavigation() {
@@ -248,8 +256,8 @@ async function fetchVideoInfo() {
         return;
     }
 
-    if (!isValidYouTubeUrl(url)) {
-        showError('유효한 YouTube URL을 입력해주세요.');
+    if (!isValidUrl(url)) {
+        showError('유효한 동영상 URL을 입력해주세요.');
         return;
     }
 
@@ -819,16 +827,15 @@ function hideError() {
 }
 
 // Utility functions
-function isValidYouTubeUrl(url) {
-    const patterns = [
-        /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=[\w-]+/,
-        /^(https?:\/\/)?(www\.)?youtube\.com\/shorts\/[\w-]+/,
-        /^(https?:\/\/)?(www\.)?youtube\.com\/live\/[\w-]+/,
-        /^(https?:\/\/)?youtu\.be\/[\w-]+/,
-        /^(https?:\/\/)?(www\.)?youtube\.com\/embed\/[\w-]+/
-    ];
-
-    return patterns.some(pattern => pattern.test(url));
+function isValidUrl(url) {
+    // 지원 플랫폼 패턴 확인
+    for (const patterns of Object.values(PLATFORM_PATTERNS)) {
+        if (patterns.some(pattern => pattern.test(url))) {
+            return true;
+        }
+    }
+    // 일반 HTTP(S) URL도 허용 (yt-dlp가 지원하는 다른 사이트)
+    return /^https?:\/\/.+/.test(url);
 }
 
 function formatBytes(bytes) {
@@ -2044,4 +2051,287 @@ async function saveDescription() {
     }
 
     cancelEditDescription();
+}
+
+// ===== Update System Functions =====
+
+function initUpdateSystem() {
+    // Check update button in settings
+    const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+    if (checkUpdateBtn) {
+        checkUpdateBtn.addEventListener('click', () => {
+            checkForUpdates(true);
+        });
+    }
+
+    // Start update download button
+    const startUpdateBtn = document.getElementById('startUpdateBtn');
+    if (startUpdateBtn) {
+        startUpdateBtn.addEventListener('click', startUpdateDownload);
+    }
+
+    // Install update button
+    const installUpdateBtn = document.getElementById('installUpdateBtn');
+    if (installUpdateBtn) {
+        installUpdateBtn.addEventListener('click', installUpdate);
+    }
+
+    // Load current version
+    loadCurrentVersion();
+
+    // Auto-check for updates on app start (after 5 seconds)
+    setTimeout(() => {
+        checkForUpdates(false);  // false = silent mode (no notification if no update)
+    }, 5000);
+}
+
+async function loadCurrentVersion() {
+    try {
+        const response = await fetch('/api/version');
+        const data = await response.json();
+        if (data.success) {
+            const versionText = document.getElementById('currentVersionText');
+            if (versionText) {
+                versionText.textContent = `v${data.version}`;
+            }
+        }
+    } catch (error) {
+        console.error('Load version error:', error);
+    }
+}
+
+async function checkForUpdates(showNoUpdateMessage = false) {
+    const updateStatus = document.getElementById('updateStatus');
+    const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+
+    if (checkUpdateBtn) {
+        checkUpdateBtn.disabled = true;
+        checkUpdateBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1 spin"></i>Checking...';
+    }
+
+    if (updateStatus) {
+        updateStatus.textContent = 'Checking for updates...';
+    }
+
+    try {
+        const response = await fetch('/api/check-update');
+        const data = await response.json();
+
+        if (data.success) {
+            if (data.has_update) {
+                updateInfo = data;
+                showUpdateModal(data);
+                if (updateStatus) {
+                    updateStatus.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Update available!</span>';
+                }
+            } else {
+                if (showNoUpdateMessage) {
+                    if (updateStatus) {
+                        updateStatus.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>You have the latest version</span>';
+                    }
+                    showToast('You are using the latest version', 'success');
+                } else if (updateStatus) {
+                    updateStatus.textContent = '';
+                }
+            }
+        } else {
+            if (showNoUpdateMessage && updateStatus) {
+                updateStatus.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Check failed</span>';
+            }
+            console.error('Update check failed:', data.error);
+        }
+    } catch (error) {
+        console.error('Check update error:', error);
+        if (showNoUpdateMessage && updateStatus) {
+            updateStatus.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Connection error</span>';
+        }
+    } finally {
+        if (checkUpdateBtn) {
+            checkUpdateBtn.disabled = false;
+            checkUpdateBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Check for Updates';
+        }
+    }
+}
+
+function showUpdateModal(data) {
+    // Reset modal state
+    document.getElementById('updateInfoSection').classList.remove('d-none');
+    document.getElementById('updateDownloadSection').classList.add('d-none');
+    document.getElementById('updateCompleteSection').classList.add('d-none');
+
+    // Show/hide buttons
+    document.getElementById('updateLaterBtn').classList.remove('d-none');
+    document.getElementById('viewReleaseBtn').classList.remove('d-none');
+    document.getElementById('startUpdateBtn').classList.remove('d-none');
+    document.getElementById('installUpdateBtn').classList.add('d-none');
+    document.getElementById('updateModalClose').classList.remove('d-none');
+
+    // Populate data
+    document.getElementById('updateCurrentVersion').textContent = `v${data.current}`;
+    document.getElementById('updateLatestVersion').textContent = `v${data.latest}`;
+    document.getElementById('releaseNotes').textContent = data.release_notes || 'No release notes available.';
+
+    // Set release URL
+    const viewReleaseBtn = document.getElementById('viewReleaseBtn');
+    if (data.release_url) {
+        viewReleaseBtn.href = data.release_url;
+        viewReleaseBtn.onclick = (e) => {
+            e.preventDefault();
+            openExternalLink(data.release_url);
+        };
+    }
+
+    // Disable download button if no download URL
+    const startUpdateBtn = document.getElementById('startUpdateBtn');
+    if (!data.download_url) {
+        startUpdateBtn.disabled = true;
+        startUpdateBtn.title = 'No installer available for download';
+    } else {
+        startUpdateBtn.disabled = false;
+        startUpdateBtn.title = '';
+    }
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('updateModal'));
+    modal.show();
+}
+
+async function startUpdateDownload() {
+    if (!updateInfo || !updateInfo.download_url) {
+        showToast('Download URL not available', 'error');
+        return;
+    }
+
+    // Switch to download view
+    document.getElementById('updateInfoSection').classList.add('d-none');
+    document.getElementById('updateDownloadSection').classList.remove('d-none');
+    document.getElementById('updateCompleteSection').classList.add('d-none');
+
+    // Hide buttons during download
+    document.getElementById('updateLaterBtn').classList.add('d-none');
+    document.getElementById('viewReleaseBtn').classList.add('d-none');
+    document.getElementById('startUpdateBtn').classList.add('d-none');
+    document.getElementById('updateModalClose').classList.add('d-none');
+
+    // Start download
+    try {
+        const response = await fetch('/api/download-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                download_url: updateInfo.download_url,
+                asset_name: updateInfo.asset_name
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            startUpdateProgressPolling();
+        } else {
+            showToast(data.error || 'Failed to start download', 'error');
+            resetUpdateModal();
+        }
+    } catch (error) {
+        console.error('Start update download error:', error);
+        showToast('Failed to start download', 'error');
+        resetUpdateModal();
+    }
+}
+
+function startUpdateProgressPolling() {
+    updateProgressInterval = setInterval(async () => {
+        try {
+            const response = await fetch('/api/update-progress');
+            const data = await response.json();
+
+            updateUpdateProgress(data);
+
+            if (data.status === 'completed') {
+                stopUpdateProgressPolling();
+                showUpdateComplete();
+            } else if (data.status === 'error') {
+                stopUpdateProgressPolling();
+                showToast(data.message || 'Download failed', 'error');
+                resetUpdateModal();
+            }
+        } catch (error) {
+            console.error('Update progress polling error:', error);
+        }
+    }, 500);
+}
+
+function stopUpdateProgressPolling() {
+    if (updateProgressInterval) {
+        clearInterval(updateProgressInterval);
+        updateProgressInterval = null;
+    }
+}
+
+function updateUpdateProgress(data) {
+    const progressBar = document.getElementById('updateProgressBar');
+    const progressPercent = document.getElementById('updateDownloadPercent');
+    const progressMessage = document.getElementById('updateDownloadMessage');
+
+    const percent = data.progress || 0;
+    progressBar.style.width = `${percent}%`;
+    progressPercent.textContent = `${percent}%`;
+
+    if (data.message) {
+        progressMessage.textContent = data.message;
+    }
+}
+
+function showUpdateComplete() {
+    document.getElementById('updateInfoSection').classList.add('d-none');
+    document.getElementById('updateDownloadSection').classList.add('d-none');
+    document.getElementById('updateCompleteSection').classList.remove('d-none');
+
+    // Show install button
+    document.getElementById('updateLaterBtn').classList.remove('d-none');
+    document.getElementById('viewReleaseBtn').classList.add('d-none');
+    document.getElementById('startUpdateBtn').classList.add('d-none');
+    document.getElementById('installUpdateBtn').classList.remove('d-none');
+    document.getElementById('updateModalClose').classList.remove('d-none');
+}
+
+function resetUpdateModal() {
+    document.getElementById('updateInfoSection').classList.remove('d-none');
+    document.getElementById('updateDownloadSection').classList.add('d-none');
+    document.getElementById('updateCompleteSection').classList.add('d-none');
+
+    document.getElementById('updateLaterBtn').classList.remove('d-none');
+    document.getElementById('viewReleaseBtn').classList.remove('d-none');
+    document.getElementById('startUpdateBtn').classList.remove('d-none');
+    document.getElementById('installUpdateBtn').classList.add('d-none');
+    document.getElementById('updateModalClose').classList.remove('d-none');
+
+    // Reset progress
+    document.getElementById('updateProgressBar').style.width = '0%';
+    document.getElementById('updateDownloadPercent').textContent = '0%';
+    document.getElementById('updateDownloadMessage').textContent = '';
+}
+
+async function installUpdate() {
+    const installBtn = document.getElementById('installUpdateBtn');
+    installBtn.disabled = true;
+    installBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1 spin"></i>Installing...';
+
+    try {
+        const response = await fetch('/api/install-update', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            showToast(data.error || 'Failed to launch installer', 'error');
+            installBtn.disabled = false;
+            installBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Install & Restart';
+        }
+        // If success, app will exit and installer will launch
+    } catch (error) {
+        console.error('Install update error:', error);
+        showToast('Failed to launch installer', 'error');
+        installBtn.disabled = false;
+        installBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Install & Restart';
+    }
 }
