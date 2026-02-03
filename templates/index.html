@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i class="bi bi-youtube text-danger fs-3"></i>
+                <span class="sidebar-title">YouTube DL</span>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="menu-item active" data-page="download">
+                    <i class="bi bi-download"></i>
+                    <span>유튜브 다운로드</span>
+                </li>
+                <li class="menu-item" data-page="library">
+                    <i class="bi bi-collection-play"></i>
+                    <span>동영상 관리</span>
+                </li>
+                <!-- Folder List in Sidebar -->
+                <div class="sidebar-folders" id="sidebarFolders">
+                    <div class="sidebar-folder-list" id="sidebarFolderList">
+                        <!-- Folders will be loaded here -->
+                    </div>
+                    <div class="sidebar-folder-setup d-none" id="sidebarFolderSetup">
+                        <button class="btn btn-sm btn-outline-light setup-btn" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                            <i class="bi bi-gear me-1"></i>Setup
+                        </button>
+                    </div>
+                    <button class="sidebar-add-folder-btn d-none" id="sidebarAddFolderBtn" title="New Folder">
+                        <i class="bi bi-folder-plus"></i>
+                        <span>New Folder</span>
+                    </button>
+                </div>
+            </ul>
+            <div class="sidebar-footer">
+                <button class="settings-btn" id="settingsBtn" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                    <i class="bi bi-gear"></i>
+                    <span>Settings</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Download Page -->
+            <div id="downloadPage" class="page active">
+                <div class="page-container">
+                    <!-- Header -->
+                    <header class="page-header">
+                        <h1 class="h5 mb-0"><i class="bi bi-download me-2"></i>유튜브 다운로드</h1>
+                    </header>
+
+                    <!-- URL Input Section -->
+                    <section class="card mb-4">
+                        <div class="card-body">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                <input type="text" class="form-control form-control-lg" id="urlInput"
+                                       placeholder="YouTube URL을 붙여넣기 하세요..."
+                                       autocomplete="off">
+                                <button class="btn btn-primary btn-lg" type="button" id="fetchBtn">
+                                    <i class="bi bi-search me-1"></i> 정보 가져오기
+                                </button>
+                            </div>
+                            <div id="urlError" class="text-danger mt-2 d-none"></div>
+                        </div>
+                    </section>
+
+                    <!-- Loading Spinner -->
+                    <div id="loadingSpinner" class="text-center py-5 d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">로딩 중...</span>
+                        </div>
+                        <p class="mt-2 text-muted">동영상 정보를 가져오는 중...</p>
+                    </div>
+
+                    <!-- Video Info Section -->
+                    <section id="videoInfo" class="card mb-4 d-none">
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Thumbnail -->
+                                <div class="col-md-5 mb-3 mb-md-0">
+                                    <div class="thumbnail-container">
+                                        <img id="videoThumbnail" src="" alt="Thumbnail" class="img-fluid rounded">
+                                        <span id="videoDuration" class="duration-badge"></span>
+                                    </div>
+                                </div>
+                                <!-- Details -->
+                                <div class="col-md-7">
+                                    <h5 id="videoTitle" class="card-title mb-2"></h5>
+                                    <p class="text-muted mb-3">
+                                        <i class="bi bi-person-circle me-1"></i>
+                                        <span id="videoChannel"></span>
+                                    </p>
+
+                                    <!-- Download Type Tabs -->
+                                    <ul class="nav nav-pills mb-3" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="video-tab" data-bs-toggle="pill"
+                                                    data-bs-target="#videoOptions" type="button">
+                                                <i class="bi bi-film me-1"></i> MP4 영상
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="audio-tab" data-bs-toggle="pill"
+                                                    data-bs-target="#audioOptions" type="button">
+                                                <i class="bi bi-music-note-beamed me-1"></i> MP3 음원
+                                            </button>
+                                        </li>
+                                    </ul>
+
+                                    <!-- Tab Content -->
+                                    <div class="tab-content">
+                                        <!-- Video Options -->
+                                        <div class="tab-pane fade show active" id="videoOptions">
+                                            <div class="mb-3">
+                                                <label class="form-label">해상도 선택</label>
+                                                <div id="resolutionButtons" class="d-flex flex-wrap gap-2">
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">저장 폴더</label>
+                                                <select class="form-select" id="downloadFolderSelect">
+                                                    <option value="00_Inbox" selected>00_Inbox (기본)</option>
+                                                </select>
+                                            </div>
+                                            <button class="btn btn-success btn-lg w-100" id="downloadVideoBtn">
+                                                <i class="bi bi-download me-2"></i>MP4 다운로드
+                                            </button>
+                                        </div>
+                                        <!-- Audio Options -->
+                                        <div class="tab-pane fade" id="audioOptions">
+                                            <div class="mb-3">
+                                                <label class="form-label">음질 선택</label>
+                                                <div class="d-flex gap-2">
+                                                    <button class="btn btn-outline-secondary quality-btn" data-bitrate="128">128 kbps</button>
+                                                    <button class="btn btn-outline-secondary quality-btn active" data-bitrate="192">192 kbps</button>
+                                                    <button class="btn btn-outline-secondary quality-btn" data-bitrate="320">320 kbps</button>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-success btn-lg w-100" id="downloadAudioBtn">
+                                                <i class="bi bi-download me-2"></i>MP3 다운로드
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Download Progress Section -->
+                    <section id="progressSection" class="card mb-4 d-none">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span id="progressStatus">다운로드 중...</span>
+                                <span id="progressPercent">0%</span>
+                            </div>
+                            <div class="progress mb-3" style="height: 25px;">
+                                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted small">
+                                <span id="progressFilename"></span>
+                                <span id="progressSpeed"></span>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <button class="btn btn-outline-danger" id="cancelBtn">
+                                    <i class="bi bi-x-circle me-1"></i> 취소
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Download Complete Section -->
+                    <section id="completeSection" class="card mb-4 d-none">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                            <h5 class="mt-3">다운로드 완료!</h5>
+                            <p id="completeFilename" class="text-muted"></p>
+                            <div class="d-flex justify-content-center gap-2">
+                                <button class="btn btn-primary" id="openFolderBtn">
+                                    <i class="bi bi-folder2-open me-1"></i> 폴더 열기
+                                </button>
+                                <button class="btn btn-outline-secondary" id="downloadMoreBtn">
+                                    <i class="bi bi-plus-circle me-1"></i> 다른 영상 다운로드
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Settings Section -->
+                    <section class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-gear me-2"></i>설정</span>
+                            <button class="btn btn-sm btn-link" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#settingsCollapse">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div class="collapse" id="settingsCollapse">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">다운로드 폴더</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="downloadPath" readonly>
+                                        <button class="btn btn-outline-secondary" id="selectFolderBtn">
+                                            <i class="bi bi-folder2 me-1"></i> 변경
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Library Page -->
+            <div id="libraryPage" class="page">
+                <div class="library-container">
+                    <!-- Video List Panel -->
+                    <div class="video-list-panel">
+                        <div class="panel-header">
+                            <h5 class="mb-0"><i class="bi bi-collection-play me-2"></i>동영상 목록</h5>
+                            <button class="btn btn-sm btn-outline-secondary" id="refreshLibraryBtn">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                        <div class="video-list" id="videoList">
+                            <!-- Video items will be loaded here -->
+                            <div class="empty-state" id="emptyLibrary">
+                                <i class="bi bi-inbox"></i>
+                                <p>다운로드한 동영상이 없습니다</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Player Panel -->
+                    <div class="video-player-panel">
+                        <div id="playerPlaceholder" class="player-placeholder">
+                            <i class="bi bi-play-circle"></i>
+                            <p>동영상을 선택하세요</p>
+                        </div>
+                        <div id="playerContainer" class="player-container d-none">
+                            <div class="video-wrapper">
+                                <video id="videoPlayer" controls>
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                            <div class="video-details">
+                                <h4 id="playerTitle" class="video-detail-title"></h4>
+                                <div class="video-meta">
+                                    <a href="#" id="playerChannel" class="channel-link" target="_blank">
+                                        <i class="bi bi-person-circle me-1"></i>
+                                        <span></span>
+                                    </a>
+                                    <span class="meta-separator">|</span>
+                                    <span id="playerDuration"><i class="bi bi-clock me-1"></i></span>
+                                </div>
+                                <div class="video-links mt-2">
+                                    <a href="#" id="playerYoutubeLink" class="btn btn-sm btn-outline-danger" target="_blank">
+                                        <i class="bi bi-youtube me-1"></i>YouTube에서 보기
+                                    </a>
+                                </div>
+
+                                <!-- Tags Section -->
+                                <div class="video-tags mt-3">
+                                    <div class="tags-header">
+                                        <label class="form-label mb-0"><i class="bi bi-tags me-1"></i>태그</label>
+                                    </div>
+                                    <div class="tags-container" id="tagsContainer">
+                                        <!-- Tags will be rendered here -->
+                                    </div>
+                                    <div class="tag-input-wrapper">
+                                        <input type="text" class="form-control form-control-sm" id="tagInput"
+                                               placeholder="태그 추가..." autocomplete="off">
+                                        <div class="tag-suggestions d-none" id="tagSuggestions">
+                                            <!-- Suggestions will appear here -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="video-description mt-3" id="playerDescription">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel"><i class="bi bi-gear me-2"></i>Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Content Folder -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Content Folder</label>
+                        <p class="text-muted small mb-2">Videos and metadata will be saved here</p>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="contentPathInput" readonly placeholder="Not set">
+                            <button class="btn btn-outline-primary" id="selectContentFolderBtn">
+                                <i class="bi bi-folder2 me-1"></i>Browse
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Theme -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Theme</label>
+                        <div class="theme-toggle-group">
+                            <button class="theme-toggle-btn active" data-theme="light">
+                                <i class="bi bi-sun me-1"></i>Light
+                            </button>
+                            <button class="theme-toggle-btn" data-theme="dark">
+                                <i class="bi bi-moon me-1"></i>Dark
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Version Info -->
+                    <div class="text-center text-muted small">
+                        <p class="mb-0">YouTube Downloader v1.0</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Move to Folder Modal -->
+    <div class="modal fade" id="moveFolderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title"><i class="bi bi-folder-symlink me-2"></i>Move to Folder</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <select class="form-select" id="moveFolderSelect">
+                        <!-- Folders will be loaded here -->
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="confirmMoveBtn">Move</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Folder Modal -->
+    <div class="modal fade" id="createFolderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title"><i class="bi bi-folder-plus me-2"></i>New Folder</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control" id="newFolderInput" placeholder="Folder name">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="confirmCreateFolderBtn">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Folder Modal -->
+    <div class="modal fade" id="renameFolderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title"><i class="bi bi-pencil me-2"></i>Rename Folder</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control" id="renameFolderInput" placeholder="New folder name">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="confirmRenameFolderBtn">Rename</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu (Video) -->
+    <div class="context-menu d-none" id="videoContextMenu">
+        <div class="context-menu-item" data-action="play">
+            <i class="bi bi-play-fill"></i>Play
+        </div>
+        <div class="context-menu-item" data-action="move">
+            <i class="bi bi-folder-symlink"></i>Move to Folder
+        </div>
+        <div class="context-menu-item" data-action="open-location">
+            <i class="bi bi-folder2-open"></i>Open File Location
+        </div>
+        <div class="context-menu-item" data-action="youtube">
+            <i class="bi bi-youtube"></i>Open in YouTube
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item context-menu-danger" data-action="delete">
+            <i class="bi bi-trash"></i>Delete
+        </div>
+    </div>
+
+    <!-- Context Menu (Folder) -->
+    <div class="context-menu d-none" id="folderContextMenu">
+        <div class="context-menu-item" data-action="rename">
+            <i class="bi bi-pencil"></i>Rename
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item context-menu-danger" data-action="delete">
+            <i class="bi bi-trash"></i>Delete
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
