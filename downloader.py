@@ -5,6 +5,7 @@ import os
 import sys
 import re
 import threading
+import urllib.request
 from datetime import datetime
 from typing import Callable, Optional, Dict, Any, List
 import yt_dlp
@@ -198,7 +199,46 @@ class YouTubeDownloader:
                 'error': str(e)
             }
 
-    def _save_metadata(self, video_filepath: str, info: Dict[str, Any] = None, folder: str = None):
+    def _save_thumbnail(self, video_filepath: str, info: Dict[str, Any] = None):
+        """Download and save thumbnail image"""
+        if info is None:
+            info = self._last_video_info
+
+        if not info or not info.get('thumbnail'):
+            return None
+
+        thumbnail_url = info.get('thumbnail', '')
+        if not thumbnail_url:
+            return None
+
+        # Get thumbnail filename based on video filename
+        video_filename = os.path.basename(video_filepath)
+        base_name = os.path.splitext(video_filename)[0]
+
+        # Determine where to save thumbnail
+        if folder_manager.is_configured():
+            thumbnails_dir = folder_manager.thumbnails_path
+            os.makedirs(thumbnails_dir, exist_ok=True)
+            thumbnail_path = os.path.join(thumbnails_dir, base_name + '.jpg')
+        else:
+            # Fallback to same folder as video
+            thumbnail_path = os.path.splitext(video_filepath)[0] + '_thumb.jpg'
+
+        try:
+            # Download thumbnail
+            req = urllib.request.Request(
+                thumbnail_url,
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                with open(thumbnail_path, 'wb') as f:
+                    f.write(response.read())
+            return thumbnail_path
+        except Exception as e:
+            print(f"Error saving thumbnail: {e}")
+            return None
+
+    def _save_metadata(self, video_filepath: str, info: Dict[str, Any] = None, folder: str = None, link_only: bool = False):
         """Save video metadata as .md file in the metadata folder"""
         if info is None:
             info = self._last_video_info
@@ -221,6 +261,10 @@ class YouTubeDownloader:
         if folder:
             info['folder'] = folder
 
+        # Detect platform if not set
+        if 'platform' not in info:
+            info['platform'] = self._detect_platform(info.get('url', ''))
+
         # Format upload date
         upload_date = info.get('upload_date', '')
         if upload_date and len(upload_date) == 8:
@@ -230,6 +274,9 @@ class YouTubeDownloader:
         tags = info.get('tags', [])
         tags_str = ', '.join(tags) if tags else ''
 
+        # Link only marker
+        link_only_marker = '\n*링크만 저장됨*\n' if link_only else ''
+
         # Create markdown content
         md_content = f"""# {info.get('title', 'Unknown')}
 
@@ -238,6 +285,7 @@ class YouTubeDownloader:
 | 항목 | 내용 |
 |------|------|
 | **채널** | [{info.get('channel', 'Unknown')}]({info.get('channel_url', '#')}) |
+| **플랫폼** | {info.get('platform', 'other')} |
 | **재생시간** | {info.get('duration_str', '')} |
 | **업로드일** | {upload_date} |
 | **조회수** | {info.get('view_count', 0):,} |
@@ -248,7 +296,7 @@ class YouTubeDownloader:
 
 ## 링크
 
-- **YouTube URL**: {info.get('url', '')}
+- **원본 URL**: {info.get('url', '')}
 - **채널 URL**: {info.get('channel_url', '')}
 - **썸네일**: {info.get('thumbnail', '')}
 
@@ -257,7 +305,7 @@ class YouTubeDownloader:
 {info.get('description', '설명 없음')}
 
 ---
-*다운로드 일시: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
+*다운로드 일시: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*{link_only_marker}
 """
 
         try:
@@ -310,8 +358,9 @@ class YouTubeDownloader:
                 if not filename.endswith('.mp4'):
                     filename = os.path.splitext(filename)[0] + '.mp4'
 
-                # Save metadata
+                # Save metadata and thumbnail
                 self._save_metadata(filename, folder=folder)
+                self._save_thumbnail(filename)
 
                 if progress_callback:
                     progress_callback({
@@ -384,8 +433,9 @@ class YouTubeDownloader:
                 filename = ydl.prepare_filename(info)
                 filename = os.path.splitext(filename)[0] + '.mp3'
 
-                # Save metadata for audio too
+                # Save metadata and thumbnail for audio too
                 self._save_metadata(filename, folder=folder)
+                self._save_thumbnail(filename)
 
                 if progress_callback:
                     progress_callback({
@@ -418,6 +468,138 @@ class YouTubeDownloader:
     def cancel_download(self):
         """Cancel current download"""
         self._cancel_flag = True
+
+    def save_link_only(self, url: str, folder: str = '00_Inbox') -> Dict[str, Any]:
+        """Save video link without downloading - only metadata and thumbnail"""
+        try:
+            # Get video info
+            result = self.get_video_info(url)
+            if not result.get('success'):
+                return result
+
+            info = self._last_video_info
+            if not info:
+                return {'success': False, 'error': '동영상 정보를 가져올 수 없습니다.'}
+
+            # Detect platform
+            platform = self._detect_platform(url)
+            info['platform'] = platform
+            info['link_only'] = True
+
+            # Generate filename from title
+            sanitized_title = sanitize_filename(info.get('title', 'untitled'))
+            fake_filepath = os.path.join(
+                folder_manager.get_folder_path(folder) or self.download_path,
+                sanitized_title + '.mp4'
+            )
+
+            # Save metadata with link_only flag
+            self._save_metadata(fake_filepath, info, folder, link_only=True)
+
+            # Save thumbnail
+            self._save_thumbnail(fake_filepath, info)
+
+            return {
+                'success': True,
+                'message': '링크가 저장되었습니다.',
+                'video_id': sanitized_title
+            }
+
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def get_url_from_metadata(self, video_id: str) -> Optional[str]:
+        """Get original URL from metadata file"""
+        md_path = os.path.join(folder_manager.metadata_path, video_id + '.md')
+        if not os.path.exists(md_path):
+            # Try with download_path
+            md_path = os.path.join(self.download_path, video_id + '.md')
+
+        if not os.path.exists(md_path):
+            return None
+
+        info = self._parse_metadata(md_path)
+        return info.get('url')
+
+    def mark_as_downloaded(self, video_id: str) -> bool:
+        """Update metadata to mark video as downloaded (remove link_only flag)"""
+        md_path = os.path.join(folder_manager.metadata_path, video_id + '.md')
+        if not os.path.exists(md_path):
+            return False
+
+        try:
+            with open(md_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Remove link_only marker
+            content = content.replace('\n*링크만 저장됨*\n', '\n')
+
+            with open(md_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            return True
+        except Exception:
+            return False
+
+    def update_metadata(self, video_id: str, updates: Dict[str, Any]) -> bool:
+        """Update metadata fields (title, description)"""
+        md_path = os.path.join(folder_manager.metadata_path, video_id + '.md')
+        if not os.path.exists(md_path):
+            md_path = os.path.join(self.download_path, video_id + '.md')
+
+        if not os.path.exists(md_path):
+            return False
+
+        try:
+            with open(md_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Update title
+            if 'title' in updates:
+                new_title = updates['title']
+                content = re.sub(r'^# .+$', f'# {new_title}', content, count=1, flags=re.MULTILINE)
+
+            # Update description
+            if 'description' in updates:
+                new_desc = updates['description']
+                content = re.sub(
+                    r'(## 상세 정보\n\n)(.+?)(\n\n---)',
+                    rf'\g<1>{new_desc}\g<3>',
+                    content,
+                    flags=re.DOTALL
+                )
+
+            with open(md_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            return True
+        except Exception as e:
+            print(f"Error updating metadata: {e}")
+            return False
+
+    def _detect_platform(self, url: str) -> str:
+        """Detect platform from URL"""
+        if not url:
+            return 'other'
+
+        url_lower = url.lower()
+        patterns = {
+            'youtube': [r'youtube\.com', r'youtu\.be'],
+            'tiktok': [r'tiktok\.com', r'vm\.tiktok\.com'],
+            'instagram': [r'instagram\.com', r'instagr\.am'],
+            'facebook': [r'facebook\.com', r'fb\.watch', r'fb\.com'],
+            'twitter': [r'twitter\.com', r'x\.com'],
+            'vimeo': [r'vimeo\.com'],
+            'naver': [r'naver\.com', r'tv\.naver\.com', r'clip\.naver\.com'],
+            'pinterest': [r'pinterest\.com'],
+        }
+
+        for platform, regexes in patterns.items():
+            for pattern in regexes:
+                if re.search(pattern, url_lower):
+                    return platform
+
+        return 'other'
 
     def set_download_path(self, path: str):
         """Set download directory"""
@@ -470,6 +652,7 @@ class YouTubeDownloader:
         """Get videos from the new folder structure"""
         videos = []
         video_extensions = ('.mp4', '.webm', '.mkv', '.mp3')
+        seen_ids = set()
 
         # Get list of folders to scan
         if folder:
@@ -478,6 +661,7 @@ class YouTubeDownloader:
             folders = folder_manager.get_folders()
             folders_to_scan = [f['name'] for f in folders]
 
+        # First, scan video files
         for folder_name in folders_to_scan:
             folder_path = folder_manager.get_folder_path(folder_name)
             if not folder_path or not os.path.isdir(folder_path):
@@ -487,6 +671,7 @@ class YouTubeDownloader:
                 if filename.lower().endswith(video_extensions):
                     video_path = os.path.join(folder_path, filename)
                     base_name = os.path.splitext(filename)[0]
+                    seen_ids.add(base_name)
 
                     # Look for metadata in metadata folder
                     md_path = os.path.join(folder_manager.metadata_path, base_name + '.md')
@@ -502,17 +687,64 @@ class YouTubeDownloader:
                             'thumbnail': '',
                             'description': '',
                             'tags': [],
+                            'platform': 'other',
+                            'link_only': False,
                         }
 
                     video_info['id'] = base_name
                     video_info['filepath'] = video_path
                     video_info['filename'] = filename
                     video_info['folder'] = folder_name
+                    video_info['link_only'] = False  # Has video file
+
+                    # Check for local thumbnail
+                    thumbnail_path = os.path.join(folder_manager.thumbnails_path, base_name + '.jpg')
+                    video_info['local_thumbnail'] = os.path.exists(thumbnail_path)
+
+                    # Detect platform if not in metadata
+                    if not video_info.get('platform'):
+                        video_info['platform'] = self._detect_platform(video_info.get('url', ''))
 
                     videos.append(video_info)
 
+        # Then, scan metadata folder for link-only items
+        if folder_manager.is_configured() and os.path.isdir(folder_manager.metadata_path):
+            for md_filename in os.listdir(folder_manager.metadata_path):
+                if md_filename.endswith('.md'):
+                    base_name = os.path.splitext(md_filename)[0]
+
+                    # Skip if already found as video file
+                    if base_name in seen_ids:
+                        continue
+
+                    md_path = os.path.join(folder_manager.metadata_path, md_filename)
+                    video_info = self._parse_metadata(md_path)
+
+                    # Only include if it's a link-only item
+                    if video_info.get('link_only'):
+                        video_info['id'] = base_name
+                        video_info['filepath'] = md_path
+                        video_info['filename'] = base_name
+                        video_info['folder'] = video_info.get('folder', config.default_folder)
+
+                        # Check for local thumbnail
+                        thumbnail_path = os.path.join(folder_manager.thumbnails_path, base_name + '.jpg')
+                        video_info['local_thumbnail'] = os.path.exists(thumbnail_path)
+
+                        # Detect platform if not in metadata
+                        if not video_info.get('platform'):
+                            video_info['platform'] = self._detect_platform(video_info.get('url', ''))
+
+                        videos.append(video_info)
+
         # Sort by modification time (newest first)
-        videos.sort(key=lambda x: os.path.getmtime(x['filepath']), reverse=True)
+        def get_mtime(v):
+            try:
+                return os.path.getmtime(v['filepath'])
+            except:
+                return 0
+
+        videos.sort(key=get_mtime, reverse=True)
 
         return videos
 
@@ -527,6 +759,8 @@ class YouTubeDownloader:
             'thumbnail': '',
             'description': '',
             'tags': [],
+            'platform': 'other',
+            'link_only': False,
         }
 
         try:
@@ -544,6 +778,11 @@ class YouTubeDownloader:
                 info['channel'] = channel_match.group(1)
                 info['channel_url'] = channel_match.group(2)
 
+            # Extract platform
+            platform_match = re.search(r'\*\*플랫폼\*\* \| (.+)', content)
+            if platform_match:
+                info['platform'] = platform_match.group(1).strip()
+
             # Extract duration
             duration_match = re.search(r'\*\*재생시간\*\* \| (.+)', content)
             if duration_match:
@@ -556,8 +795,10 @@ class YouTubeDownloader:
                 if tags_str:
                     info['tags'] = [t.strip() for t in tags_str.split(',') if t.strip()]
 
-            # Extract YouTube URL
-            url_match = re.search(r'\*\*YouTube URL\*\*: (.+)', content)
+            # Extract URL (원본 URL or YouTube URL for backwards compatibility)
+            url_match = re.search(r'\*\*원본 URL\*\*: (.+)', content)
+            if not url_match:
+                url_match = re.search(r'\*\*YouTube URL\*\*: (.+)', content)
             if url_match:
                 info['url'] = url_match.group(1).strip()
 
@@ -570,6 +811,10 @@ class YouTubeDownloader:
             desc_match = re.search(r'## 상세 정보\n\n(.+?)\n\n---', content, re.DOTALL)
             if desc_match:
                 info['description'] = desc_match.group(1).strip()
+
+            # Check link_only flag
+            if '*링크만 저장됨*' in content:
+                info['link_only'] = True
 
         except Exception as e:
             print(f"Error parsing metadata: {e}")

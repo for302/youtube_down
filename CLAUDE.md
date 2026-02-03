@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-YouTube Downloader is a desktop application that downloads videos and audio from YouTube. It uses a Python Flask backend with a web-based frontend (HTML/CSS/JavaScript) wrapped in PyWebView for cross-platform desktop support.
+ClickClipDown is a desktop application that downloads videos and audio from YouTube. It uses a Python Flask backend with a web-based frontend (HTML/CSS/JavaScript) wrapped in PyWebView for cross-platform desktop support.
 
 ## Development Commands
 

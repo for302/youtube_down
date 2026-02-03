@@ -476,6 +476,140 @@ def open_file_location():
         return jsonify({'success': False, 'error': str(e)})
 
 
+@app.route('/api/save-link', methods=['POST'])
+def save_link_only():
+    """Save video link without downloading the actual video"""
+    data = request.get_json()
+    url = data.get('url', '')
+    folder = data.get('folder', config.default_folder)
+
+    if not url:
+        return jsonify({'success': False, 'error': 'URL을 입력해주세요.'})
+
+    result = downloader.save_link_only(url, folder)
+    return jsonify(result)
+
+
+@app.route('/api/download-later', methods=['POST'])
+def download_later():
+    """Download a previously saved link"""
+    global progress_store
+
+    data = request.get_json()
+    video_id = data.get('video_id', '')
+    folder = data.get('folder', config.default_folder)
+
+    if not video_id:
+        return jsonify({'success': False, 'error': 'Video ID가 필요합니다.'})
+
+    # Get URL from metadata
+    url = downloader.get_url_from_metadata(video_id)
+    if not url:
+        return jsonify({'success': False, 'error': '원본 URL을 찾을 수 없습니다.'})
+
+    # Reset progress
+    progress_store = {
+        'status': 'starting',
+        'progress': 0,
+        'message': '다운로드 시작 중...',
+        'filename': '',
+        'filepath': ''
+    }
+
+    options = {
+        'resolution': '720p',
+        'folder': folder
+    }
+
+    def on_complete(result):
+        global progress_store
+        if result['success']:
+            # Update metadata to mark as downloaded
+            downloader.mark_as_downloaded(video_id)
+            progress_store.update({
+                'status': 'completed',
+                'progress': 100,
+                'message': '다운로드 완료!',
+                'filename': result['filename'],
+                'filepath': result['filepath']
+            })
+        else:
+            progress_store.update({
+                'status': 'error',
+                'message': result.get('error', '다운로드 실패')
+            })
+
+    download_async(
+        downloader, url, 'video', options,
+        progress_callback=update_progress,
+        complete_callback=on_complete
+    )
+
+    return jsonify({'success': True, 'message': '다운로드가 시작되었습니다.'})
+
+
+@app.route('/api/update-metadata/<path:video_id>', methods=['POST'])
+def update_metadata(video_id):
+    """Update video metadata (title, description)"""
+    data = request.get_json()
+
+    try:
+        success = downloader.update_metadata(video_id, data)
+        return jsonify({'success': success})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/thumbnails/<path:video_id>')
+def get_thumbnail(video_id):
+    """Serve local thumbnail image"""
+    try:
+        thumbnail_path = os.path.join(folder_manager.thumbnails_path, video_id + '.jpg')
+        if os.path.exists(thumbnail_path):
+            return send_file(thumbnail_path, mimetype='image/jpeg')
+        else:
+            return jsonify({'error': 'Thumbnail not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/open-content-folder', methods=['POST'])
+def open_content_folder():
+    """Open the content folder in file explorer"""
+    data = request.get_json()
+    path = data.get('path', config.content_path)
+
+    if not path or not os.path.isdir(path):
+        return jsonify({'success': False, 'error': 'Invalid path'})
+
+    try:
+        if sys.platform == 'win32':
+            os.startfile(path)
+        elif sys.platform == 'darwin':
+            subprocess.run(['open', path])
+        else:
+            subprocess.run(['xdg-open', path])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/rename-default-folder', methods=['POST'])
+def rename_default_folder():
+    """Rename the default folder"""
+    data = request.get_json()
+    new_name = data.get('new_name', '')
+
+    if not new_name:
+        return jsonify({'success': False, 'error': 'New name is required'})
+
+    success, message = folder_manager.rename_default_folder(new_name)
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
+
 @app.route('/api/delete-video', methods=['POST'])
 def delete_video():
     """Delete a video and its metadata"""
@@ -522,15 +656,18 @@ class Api:
 
     def select_content_folder(self):
         """Open folder selection dialog for content storage path"""
-        result = webview.windows[0].create_file_dialog(
-            webview.FOLDER_DIALOG
-        )
-        if result and len(result) > 0:
-            path = result[0]
-            # Initialize folder structure
-            config.content_path = path
-            folder_manager.initialize_structure(path)
-            return path
+        try:
+            result = webview.windows[0].create_file_dialog(
+                webview.FOLDER_DIALOG
+            )
+            if result and len(result) > 0:
+                path = result[0]
+                # Initialize folder structure
+                config.content_path = path
+                folder_manager.initialize_structure(path)
+                return path
+        except Exception as e:
+            print(f"Error selecting content folder: {e}")
         return None
 
     def open_url(self, url):
@@ -557,7 +694,7 @@ def main():
     # Create PyWebView window
     api = Api()
     window = webview.create_window(
-        'YouTube Downloader',
+        'ClickClipDown',
         'http://127.0.0.1:5000',
         width=1100,
         height=750,
@@ -566,8 +703,8 @@ def main():
         confirm_close=True
     )
 
-    # Start PyWebView
-    webview.start(debug=False)
+    # Start PyWebView (debug=True enables F12 developer tools)
+    webview.start(debug=True)
 
 
 if __name__ == '__main__':

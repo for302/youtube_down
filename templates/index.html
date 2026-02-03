@@ -3,30 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Downloader</title>
+    <title>ClickClipDown</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23FF0000' width='32' height='32' rx='6'/><path fill='white' d='M12 10l10 6-10 6z'/></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=3" rel="stylesheet">
 </head>
 <body>
     <div class="app-container">
         <!-- Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-header">
-                <i class="bi bi-youtube text-danger fs-3"></i>
-                <span class="sidebar-title">YouTube DL</span>
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="sidebar-logo" style="height: 32px;">
+                <span class="sidebar-title">ClickClipDown</span>
             </div>
             <ul class="sidebar-menu">
                 <li class="menu-item active" data-page="download">
                     <i class="bi bi-download"></i>
                     <span>유튜브 다운로드</span>
                 </li>
-                <li class="menu-item" data-page="library">
-                    <i class="bi bi-collection-play"></i>
-                    <span>동영상 관리</span>
-                </li>
-                <!-- Folder List in Sidebar -->
-                <div class="sidebar-folders" id="sidebarFolders">
+                <!-- Folder List in Sidebar - Always visible -->
+                <div class="sidebar-folders show" id="sidebarFolders">
                     <div class="sidebar-folder-list" id="sidebarFolderList">
                         <!-- Folders will be loaded here -->
                     </div>
@@ -133,9 +130,14 @@
                                                     <option value="00_Inbox" selected>00_Inbox (기본)</option>
                                                 </select>
                                             </div>
-                                            <button class="btn btn-success btn-lg w-100" id="downloadVideoBtn">
-                                                <i class="bi bi-download me-2"></i>MP4 다운로드
-                                            </button>
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-outline-primary btn-lg flex-fill" id="saveLinkOnlyBtn">
+                                                    <i class="bi bi-cloud-arrow-up me-2"></i>링크만 저장
+                                                </button>
+                                                <button class="btn btn-success btn-lg flex-fill" id="downloadVideoBtn">
+                                                    <i class="bi bi-download me-2"></i>MP4 다운로드
+                                                </button>
+                                            </div>
                                         </div>
                                         <!-- Audio Options -->
                                         <div class="tab-pane fade" id="audioOptions">
@@ -196,30 +198,6 @@
                             </div>
                         </div>
                     </section>
-
-                    <!-- Settings Section -->
-                    <section class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-gear me-2"></i>설정</span>
-                            <button class="btn btn-sm btn-link" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#settingsCollapse">
-                                <i class="bi bi-chevron-down"></i>
-                            </button>
-                        </div>
-                        <div class="collapse" id="settingsCollapse">
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label class="form-label">다운로드 폴더</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="downloadPath" readonly>
-                                        <button class="btn btn-outline-secondary" id="selectFolderBtn">
-                                            <i class="bi bi-folder2 me-1"></i> 변경
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
                 </div>
             </div>
 
@@ -229,17 +207,57 @@
                     <!-- Video List Panel -->
                     <div class="video-list-panel">
                         <div class="panel-header">
-                            <h5 class="mb-0"><i class="bi bi-collection-play me-2"></i>동영상 목록</h5>
-                            <button class="btn btn-sm btn-outline-secondary" id="refreshLibraryBtn">
-                                <i class="bi bi-arrow-clockwise"></i>
-                            </button>
+                            <div class="search-filter-container">
+                                <div class="search-box">
+                                    <i class="bi bi-search"></i>
+                                    <input type="text" class="form-control form-control-sm" id="librarySearchInput"
+                                           placeholder="제목, 상세정보, 태그 검색..." autocomplete="off">
+                                    <button type="button" class="search-clear-btn d-none" id="searchClearBtn" title="검색어 지우기">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                                <button class="btn btn-sm btn-outline-secondary filter-btn" id="platformFilterBtn" title="플랫폼 필터">
+                                    <i class="bi bi-funnel"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Platform Filter Dropdown -->
+                        <div class="platform-filter-dropdown d-none" id="platformFilterDropdown">
+                            <div class="platform-filter-item" data-platform="all">
+                                <input type="checkbox" id="filterAll" checked>
+                                <label for="filterAll">전체</label>
+                            </div>
+                            <div class="platform-filter-item" data-platform="youtube">
+                                <input type="checkbox" id="filterYoutube" checked>
+                                <label for="filterYoutube"><i class="bi bi-youtube text-danger"></i> YouTube</label>
+                            </div>
+                            <div class="platform-filter-item" data-platform="tiktok">
+                                <input type="checkbox" id="filterTiktok" checked>
+                                <label for="filterTiktok"><i class="bi bi-tiktok"></i> TikTok</label>
+                            </div>
+                            <div class="platform-filter-item" data-platform="instagram">
+                                <input type="checkbox" id="filterInstagram" checked>
+                                <label for="filterInstagram"><i class="bi bi-instagram text-danger"></i> Instagram</label>
+                            </div>
+                            <div class="platform-filter-item" data-platform="facebook">
+                                <input type="checkbox" id="filterFacebook" checked>
+                                <label for="filterFacebook"><i class="bi bi-facebook text-primary"></i> Facebook</label>
+                            </div>
+                            <div class="platform-filter-item" data-platform="twitter">
+                                <input type="checkbox" id="filterTwitter" checked>
+                                <label for="filterTwitter"><i class="bi bi-twitter-x"></i> X (Twitter)</label>
+                            </div>
+                            <div class="platform-filter-item" data-platform="other">
+                                <input type="checkbox" id="filterOther" checked>
+                                <label for="filterOther"><i class="bi bi-globe"></i> 기타</label>
+                            </div>
                         </div>
                         <div class="video-list" id="videoList">
                             <!-- Video items will be loaded here -->
-                            <div class="empty-state" id="emptyLibrary">
-                                <i class="bi bi-inbox"></i>
-                                <p>다운로드한 동영상이 없습니다</p>
-                            </div>
+                        </div>
+                        <div class="empty-state d-none" id="emptyLibrary">
+                            <i class="bi bi-inbox"></i>
+                            <p>다운로드한 동영상이 없습니다</p>
                         </div>
                     </div>
 
@@ -254,9 +272,31 @@
                                 <video id="videoPlayer" controls>
                                     Your browser does not support the video tag.
                                 </video>
+                                <!-- Download button for link-only items -->
+                                <div id="linkOnlyOverlay" class="link-only-overlay d-none">
+                                    <div class="link-only-message">
+                                        <i class="bi bi-cloud"></i>
+                                        <p>링크만 저장된 영상입니다</p>
+                                        <button class="btn btn-success" id="downloadLaterBtn">
+                                            <i class="bi bi-download me-2"></i>영상 다운로드
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="video-details">
-                                <h4 id="playerTitle" class="video-detail-title"></h4>
+                                <div class="video-title-row">
+                                    <h4 id="playerTitle" class="video-detail-title"></h4>
+                                    <button class="btn btn-sm btn-link" id="editTitleBtn" title="제목 편집">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                                <div class="video-title-edit d-none" id="titleEditSection">
+                                    <input type="text" class="form-control" id="titleEditInput">
+                                    <div class="edit-actions">
+                                        <button class="btn btn-sm btn-primary" id="saveTitleBtn">저장</button>
+                                        <button class="btn btn-sm btn-secondary" id="cancelTitleBtn">취소</button>
+                                    </div>
+                                </div>
                                 <div class="video-meta">
                                     <a href="#" id="playerChannel" class="channel-link" target="_blank">
                                         <i class="bi bi-person-circle me-1"></i>
@@ -264,10 +304,14 @@
                                     </a>
                                     <span class="meta-separator">|</span>
                                     <span id="playerDuration"><i class="bi bi-clock me-1"></i></span>
+                                    <span class="meta-separator">|</span>
+                                    <span id="playerPlatform" class="platform-badge">
+                                        <i class="bi bi-youtube"></i> YouTube
+                                    </span>
                                 </div>
                                 <div class="video-links mt-2">
-                                    <a href="#" id="playerYoutubeLink" class="btn btn-sm btn-outline-danger" target="_blank">
-                                        <i class="bi bi-youtube me-1"></i>YouTube에서 보기
+                                    <a href="#" id="playerSourceLink" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>원본에서 보기
                                     </a>
                                 </div>
 
@@ -288,7 +332,23 @@
                                     </div>
                                 </div>
 
-                                <div class="video-description mt-3" id="playerDescription">
+                                <div class="video-description-section mt-3">
+                                    <div class="description-header">
+                                        <label class="form-label mb-0"><i class="bi bi-text-left me-1"></i>상세정보</label>
+                                        <button class="btn btn-sm btn-link" id="editDescBtn" title="상세정보 편집">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                    <div class="video-description" id="playerDescription">
+                                        <!-- Description with clickable timestamps -->
+                                    </div>
+                                    <div class="video-description-edit d-none" id="descEditSection">
+                                        <textarea class="form-control" id="descEditInput" rows="6"></textarea>
+                                        <div class="edit-actions mt-2">
+                                            <button class="btn btn-sm btn-primary" id="saveDescBtn">저장</button>
+                                            <button class="btn btn-sm btn-secondary" id="cancelDescBtn">취소</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -313,8 +373,23 @@
                         <p class="text-muted small mb-2">Videos and metadata will be saved here</p>
                         <div class="input-group">
                             <input type="text" class="form-control" id="contentPathInput" readonly placeholder="Not set">
+                            <button class="btn btn-outline-secondary" id="openContentFolderBtn" title="Open folder">
+                                <i class="bi bi-folder2-open"></i>
+                            </button>
                             <button class="btn btn-outline-primary" id="selectContentFolderBtn">
                                 <i class="bi bi-folder2 me-1"></i>Browse
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Default Folder Name -->
+                    <div class="mb-4" id="defaultFolderSection">
+                        <label class="form-label fw-bold">Default Folder Name</label>
+                        <p class="text-muted small mb-2">The default folder for new downloads</p>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="defaultFolderInput" placeholder="00_Inbox">
+                            <button class="btn btn-outline-primary" id="saveDefaultFolderBtn">
+                                <i class="bi bi-check-lg"></i>
                             </button>
                         </div>
                     </div>
@@ -334,7 +409,7 @@
 
                     <!-- Version Info -->
                     <div class="text-center text-muted small">
-                        <p class="mb-0">YouTube Downloader v1.0</p>
+                        <p class="mb-0">ClickClipDown v1.0</p>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -435,6 +510,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=4"></script>
 </body>
 </html>

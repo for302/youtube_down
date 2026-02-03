@@ -11,15 +11,15 @@ from typing import Any, Optional
 def get_config_dir() -> str:
     """Get the configuration directory path based on platform"""
     if sys.platform == 'win32':
-        # Windows: %APPDATA%/YouTubeDownloader
+        # Windows: %APPDATA%/ClickClipDown
         base = os.environ.get('APPDATA', os.path.expanduser('~'))
-        return os.path.join(base, 'YouTubeDownloader')
+        return os.path.join(base, 'ClickClipDown')
     elif sys.platform == 'darwin':
-        # macOS: ~/Library/Application Support/YouTubeDownloader
-        return os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'YouTubeDownloader')
+        # macOS: ~/Library/Application Support/ClickClipDown
+        return os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'ClickClipDown')
     else:
-        # Linux: ~/.config/YouTubeDownloader
-        return os.path.join(os.path.expanduser('~'), '.config', 'YouTubeDownloader')
+        # Linux: ~/.config/ClickClipDown
+        return os.path.join(os.path.expanduser('~'), '.config', 'ClickClipDown')
 
 
 class ConfigManager:

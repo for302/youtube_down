@@ -12,12 +12,16 @@ from config import config
 class FolderManager:
     """Manages folder structure for video and metadata storage"""
 
-    DEFAULT_INBOX = '00_Inbox'
     VIDEOS_DIR = 'videos'
     METADATA_DIR = 'metadata'
 
     def __init__(self):
         self._content_path = None
+
+    @property
+    def default_folder(self) -> str:
+        """Get the default folder name from config"""
+        return config.default_folder or '00_Inbox'
 
     @property
     def content_path(self) -> str:
@@ -38,17 +42,27 @@ class FolderManager:
             return ''
         return os.path.join(self.content_path, self.METADATA_DIR)
 
+    @property
+    def thumbnails_path(self) -> str:
+        """Get the thumbnails directory path"""
+        if not self.content_path:
+            return ''
+        return os.path.join(self.content_path, 'thumbnails')
+
     def is_configured(self) -> bool:
         """Check if content path is configured and valid"""
         return config.is_configured()
 
-    def initialize_structure(self, path: str = None) -> bool:
+    def initialize_structure(self, path: str = None, default_folder_name: str = None) -> bool:
         """
         Initialize the folder structure at the given path.
-        Creates videos/, metadata/, and 00_Inbox folders.
+        Creates videos/, metadata/, and default folder.
         """
         if path:
             config.content_path = path
+
+        if default_folder_name:
+            config.default_folder = default_folder_name
 
         if not self.content_path:
             return False
@@ -57,9 +71,10 @@ class FolderManager:
             # Create main directories
             os.makedirs(self.videos_path, exist_ok=True)
             os.makedirs(self.metadata_path, exist_ok=True)
+            os.makedirs(self.thumbnails_path, exist_ok=True)
 
             # Create default inbox folder
-            inbox_path = os.path.join(self.videos_path, self.DEFAULT_INBOX)
+            inbox_path = os.path.join(self.videos_path, self.default_folder)
             os.makedirs(inbox_path, exist_ok=True)
 
             return True
@@ -86,7 +101,7 @@ class FolderManager:
                         'name': name,
                         'path': folder_path,
                         'video_count': video_count,
-                        'is_default': name == self.DEFAULT_INBOX
+                        'is_default': name == self.default_folder
                     })
 
             # Sort folders: 00_Inbox first, then alphabetically
@@ -145,9 +160,9 @@ class FolderManager:
         if not self.is_configured():
             return False, '컨텐츠 폴더가 설정되지 않았습니다.'
 
-        # Cannot rename default inbox
-        if old_name == self.DEFAULT_INBOX:
-            return False, '기본 폴더는 이름을 변경할 수 없습니다.'
+        # Cannot rename default inbox (only through rename_default_folder)
+        if old_name == self.default_folder:
+            return False, '기본 폴더는 Settings에서 이름을 변경해주세요.'
 
         if not new_name or not new_name.strip():
             return False, '새 폴더 이름을 입력해주세요.'
@@ -180,11 +195,11 @@ class FolderManager:
             return False, '컨텐츠 폴더가 설정되지 않았습니다.'
 
         # Cannot delete default inbox
-        if name == self.DEFAULT_INBOX:
+        if name == self.default_folder:
             return False, '기본 폴더는 삭제할 수 없습니다.'
 
         folder_path = os.path.join(self.videos_path, name)
-        inbox_path = os.path.join(self.videos_path, self.DEFAULT_INBOX)
+        inbox_path = os.path.join(self.videos_path, self.default_folder)
 
         if not os.path.exists(folder_path):
             return False, '폴더를 찾을 수 없습니다.'
@@ -209,7 +224,7 @@ class FolderManager:
             # Remove the empty folder
             os.rmdir(folder_path)
 
-            return True, f'{moved_count}개의 동영상이 00_Inbox로 이동되었습니다.'
+            return True, f'{moved_count}개의 동영상이 {self.default_folder}로 이동되었습니다.'
         except OSError as e:
             return False, f'폴더 삭제 실패: {str(e)}'
 
@@ -270,7 +285,7 @@ class FolderManager:
         if not os.path.isdir(old_path):
             return False, 0
 
-        inbox_path = os.path.join(self.videos_path, self.DEFAULT_INBOX)
+        inbox_path = os.path.join(self.videos_path, self.default_folder)
         os.makedirs(inbox_path, exist_ok=True)
         os.makedirs(self.metadata_path, exist_ok=True)
 
@@ -301,6 +316,45 @@ class FolderManager:
             return True, migrated_count
         except OSError:
             return False, migrated_count
+
+    def rename_default_folder(self, new_name: str) -> Tuple[bool, str]:
+        """
+        Rename the default folder.
+        Returns (success, message).
+        """
+        if not self.is_configured():
+            return False, '컨텐츠 폴더가 설정되지 않았습니다.'
+
+        if not new_name or not new_name.strip():
+            return False, '새 폴더 이름을 입력해주세요.'
+
+        sanitized_name = self._sanitize_folder_name(new_name.strip())
+        if not sanitized_name:
+            return False, '유효하지 않은 폴더 이름입니다.'
+
+        old_name = self.default_folder
+        if old_name == sanitized_name:
+            return True, '폴더 이름이 동일합니다.'
+
+        old_path = os.path.join(self.videos_path, old_name)
+        new_path = os.path.join(self.videos_path, sanitized_name)
+
+        try:
+            # If old folder exists, rename it
+            if os.path.exists(old_path):
+                if os.path.exists(new_path):
+                    return False, '이미 존재하는 폴더 이름입니다.'
+                os.rename(old_path, new_path)
+            else:
+                # Create new folder if old doesn't exist
+                os.makedirs(new_path, exist_ok=True)
+
+            # Update config
+            config.default_folder = sanitized_name
+
+            return True, f'기본 폴더가 {sanitized_name}(으)로 변경되었습니다.'
+        except OSError as e:
+            return False, f'폴더 이름 변경 실패: {str(e)}'
 
     def _sanitize_folder_name(self, name: str) -> str:
         """Remove invalid characters from folder name"""

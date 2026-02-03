@@ -27,6 +27,49 @@ let appSettings = {
     default_folder: '00_Inbox'
 };
 
+// Search & Filter State
+let searchQuery = '';
+let platformFilters = ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'other'];
+
+// Platform Detection
+const PLATFORM_PATTERNS = {
+    youtube: [/youtube\.com/, /youtu\.be/],
+    tiktok: [/tiktok\.com/, /vm\.tiktok\.com/],
+    instagram: [/instagram\.com/, /instagr\.am/],
+    facebook: [/facebook\.com/, /fb\.watch/, /fb\.com/],
+    twitter: [/twitter\.com/, /x\.com/],
+    vimeo: [/vimeo\.com/],
+    naver: [/naver\.com/, /tv\.naver\.com/, /clip\.naver\.com/],
+    pinterest: [/pinterest\.com/],
+};
+
+const PLATFORM_ICONS = {
+    youtube: { icon: 'bi-youtube', color: 'text-danger', name: 'YouTube' },
+    tiktok: { icon: 'bi-tiktok', color: '', name: 'TikTok' },
+    instagram: { icon: 'bi-instagram', color: 'text-danger', name: 'Instagram' },
+    facebook: { icon: 'bi-facebook', color: 'text-primary', name: 'Facebook' },
+    twitter: { icon: 'bi-twitter-x', color: '', name: 'X' },
+    vimeo: { icon: 'bi-vimeo', color: 'text-info', name: 'Vimeo' },
+    naver: { icon: 'bi-n-square', color: 'text-success', name: 'Naver' },
+    pinterest: { icon: 'bi-pinterest', color: 'text-danger', name: 'Pinterest' },
+    other: { icon: 'bi-globe', color: '', name: '기타' }
+};
+
+function detectPlatform(url) {
+    if (!url) return 'other';
+    const lowerUrl = url.toLowerCase();
+    for (const [platform, patterns] of Object.entries(PLATFORM_PATTERNS)) {
+        if (patterns.some(pattern => pattern.test(lowerUrl))) {
+            return platform;
+        }
+    }
+    return 'other';
+}
+
+function getPlatformInfo(platform) {
+    return PLATFORM_ICONS[platform] || PLATFORM_ICONS.other;
+}
+
 // DOM Elements
 const urlInput = document.getElementById('urlInput');
 const fetchBtn = document.getElementById('fetchBtn');
@@ -46,6 +89,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initFolderManagement();
     initContextMenu();
     initDragAndDrop();
+
+    // Load folders on startup (sidebar always visible)
+    loadFolders();
 });
 
 function initNavigation() {
@@ -69,15 +115,11 @@ function switchPage(pageName) {
         page.classList.remove('active');
     });
 
-    // Show/hide sidebar folders
-    const sidebarFolders = document.getElementById('sidebarFolders');
     if (pageName === 'download') {
         document.getElementById('downloadPage').classList.add('active');
         updateDownloadFolderSelect();
-        sidebarFolders.classList.remove('show');
     } else if (pageName === 'library') {
         document.getElementById('libraryPage').classList.add('active');
-        sidebarFolders.classList.add('show');
         loadFolders();
         loadVideoLibrary();
     }
@@ -100,17 +142,17 @@ function initEventListeners() {
     });
 
     // Download buttons
-    document.getElementById('downloadVideoBtn').addEventListener('click', () => startDownload('video'));
-    document.getElementById('downloadAudioBtn').addEventListener('click', () => startDownload('audio'));
+    document.getElementById('downloadVideoBtn')?.addEventListener('click', () => startDownload('video'));
+    document.getElementById('downloadAudioBtn')?.addEventListener('click', () => startDownload('audio'));
 
     // Cancel button
-    document.getElementById('cancelBtn').addEventListener('click', cancelDownload);
+    document.getElementById('cancelBtn')?.addEventListener('click', cancelDownload);
 
     // Open folder button
-    document.getElementById('openFolderBtn').addEventListener('click', openFolder);
+    document.getElementById('openFolderBtn')?.addEventListener('click', openFolder);
 
     // Download more button
-    document.getElementById('downloadMoreBtn').addEventListener('click', resetUI);
+    document.getElementById('downloadMoreBtn')?.addEventListener('click', resetUI);
 
     // Quality buttons (MP3)
     document.querySelectorAll('.quality-btn').forEach(btn => {
@@ -121,11 +163,81 @@ function initEventListeners() {
         });
     });
 
-    // Select folder button
-    document.getElementById('selectFolderBtn').addEventListener('click', selectFolder);
+    // Select folder button (legacy)
+    document.getElementById('selectFolderBtn')?.addEventListener('click', selectFolder);
 
     // Refresh library button
-    document.getElementById('refreshLibraryBtn').addEventListener('click', loadVideoLibrary);
+    document.getElementById('refreshLibraryBtn')?.addEventListener('click', loadVideoLibrary);
+
+    // Save link only button
+    document.getElementById('saveLinkOnlyBtn')?.addEventListener('click', saveLinkOnly);
+
+    // Download later button
+    document.getElementById('downloadLaterBtn')?.addEventListener('click', downloadLater);
+
+    // Search input - real-time filtering
+    const searchInput = document.getElementById('librarySearchInput');
+    const searchClearBtn = document.getElementById('searchClearBtn');
+    if (searchInput) {
+        searchInput.addEventListener('input', async (e) => {
+            searchQuery = e.target.value.trim();
+
+            // Show/hide clear button
+            if (searchClearBtn) {
+                searchClearBtn.classList.toggle('d-none', !searchQuery);
+            }
+
+            // When searching, switch to "All Folders" to search across all videos
+            if (searchQuery && currentFolder !== null) {
+                currentFolder = null;
+                renderFolderList();
+                await loadVideoLibrary();  // Load all videos
+            } else {
+                // Real-time filter without reloading from server
+                renderVideoList();
+            }
+        });
+    }
+
+    // Search clear button
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                searchQuery = '';
+                searchClearBtn.classList.add('d-none');
+                renderVideoList();
+                searchInput.focus();
+            }
+        });
+    }
+
+    // Platform filter button
+    document.getElementById('platformFilterBtn')?.addEventListener('click', togglePlatformFilter);
+
+    // Platform filter checkboxes
+    document.querySelectorAll('.platform-filter-item input').forEach(checkbox => {
+        checkbox.addEventListener('change', handlePlatformFilterChange);
+    });
+
+    // Close filter dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('platformFilterDropdown');
+        const btn = document.getElementById('platformFilterBtn');
+        if (dropdown && !dropdown.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+            dropdown.classList.add('d-none');
+        }
+    });
+
+    // Title edit buttons
+    document.getElementById('editTitleBtn')?.addEventListener('click', startEditTitle);
+    document.getElementById('saveTitleBtn')?.addEventListener('click', saveTitle);
+    document.getElementById('cancelTitleBtn')?.addEventListener('click', cancelEditTitle);
+
+    // Description edit buttons
+    document.getElementById('editDescBtn')?.addEventListener('click', startEditDescription);
+    document.getElementById('saveDescBtn')?.addEventListener('click', saveDescription);
+    document.getElementById('cancelDescBtn')?.addEventListener('click', cancelEditDescription);
 }
 
 async function fetchVideoInfo() {
@@ -366,15 +478,8 @@ async function selectFolder() {
 }
 
 async function loadDownloadPath() {
-    try {
-        const response = await fetch('/api/get-path');
-        const data = await response.json();
-        if (data.success) {
-            document.getElementById('downloadPath').value = data.path;
-        }
-    } catch (error) {
-        console.error('Load path error:', error);
-    }
+    // Legacy function - downloadPath input removed from UI
+    // Keeping for potential future use
 }
 
 function resetUI() {
@@ -412,19 +517,39 @@ function renderVideoList() {
     const videoListEl = document.getElementById('videoList');
     const emptyState = document.getElementById('emptyLibrary');
 
-    if (videoLibrary.length === 0) {
+    if (!videoListEl || !emptyState) {
+        return;
+    }
+
+    // Filter videos by search and platform
+    let filteredVideos = videoLibrary.filter(video => {
+        // Platform filter
+        const platform = video.platform || detectPlatform(video.url);
+        const platformMatch = platformFilters.includes(platform) || platformFilters.includes('other');
+
+        // Search filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const titleMatch = video.title?.toLowerCase().includes(query);
+            const channelMatch = video.channel?.toLowerCase().includes(query);
+            const descMatch = video.description?.toLowerCase().includes(query);
+            const tagsMatch = video.tags?.some(tag => tag.toLowerCase().includes(query));
+            return platformMatch && (titleMatch || channelMatch || descMatch || tagsMatch);
+        }
+
+        return platformMatch;
+    });
+
+    if (filteredVideos.length === 0) {
         emptyState.classList.remove('d-none');
-        // Clear any existing video items
         videoListEl.querySelectorAll('.video-item').forEach(el => el.remove());
         return;
     }
 
     emptyState.classList.add('d-none');
-
-    // Clear and rebuild list
     videoListEl.innerHTML = '';
 
-    videoLibrary.forEach(video => {
+    filteredVideos.forEach(video => {
         const item = document.createElement('div');
         item.className = 'video-item';
         item.dataset.id = video.id;
@@ -432,26 +557,66 @@ function renderVideoList() {
         item.dataset.filename = video.filename || '';
         item.draggable = true;
 
+        // Detect platform
+        const platform = video.platform || detectPlatform(video.url);
+        const platformInfo = getPlatformInfo(platform);
+
         // Show folder badge when viewing all folders
         const folderBadge = !currentFolder && video.folder
             ? `<div class="video-item-folder"><i class="bi bi-folder"></i>${escapeHtml(video.folder)}</div>`
             : '';
 
+        // Platform overlay on thumbnail (bottom-left)
+        const platformOverlay = `<span class="platform-overlay"><i class="bi ${platformInfo.icon}"></i></span>`;
+
+        // Storage badge (local or link)
+        const storageBadge = video.link_only
+            ? '<span class="storage-badge link"><i class="bi bi-cloud"></i> 링크</span>'
+            : '<span class="storage-badge local"><i class="bi bi-hdd"></i> 로컬</span>';
+
+        // Download button for link-only items
+        const downloadBtn = video.link_only
+            ? '<button class="btn-download-item" title="다운로드"><i class="bi bi-download"></i></button>'
+            : '';
+
+        // Use local thumbnail if available, otherwise fallback to original URL
+        const thumbnailUrl = video.local_thumbnail
+            ? `/api/thumbnails/${encodeURIComponent(video.id)}`
+            : (video.thumbnail || '/static/img/placeholder.png');
+
         item.innerHTML = `
             <div class="video-item-thumb">
-                <img src="${video.thumbnail || '/static/img/placeholder.png'}" alt="Thumbnail"
+                <img src="${thumbnailUrl}" alt="Thumbnail"
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%2268%22><rect fill=%22%23ccc%22 width=%22120%22 height=%2268%22/></svg>'">
                 <span class="duration">${video.duration_str || ''}</span>
+                ${platformOverlay}
             </div>
-            <div class="video-item-info">
-                <div class="video-item-title">${escapeHtml(video.title)}</div>
-                <div class="video-item-channel">${escapeHtml(video.channel || '')}</div>
-                ${folderBadge}
+            <div class="video-item-content">
+                <div class="video-item-badges">
+                    ${storageBadge}
+                    ${downloadBtn}
+                </div>
+                <div class="video-item-info">
+                    <div class="video-item-title">${highlightText(video.title, searchQuery)}</div>
+                    <div class="video-item-channel">${highlightText(video.channel || '', searchQuery)}</div>
+                    ${folderBadge}
+                </div>
             </div>
         `;
 
         item.addEventListener('click', () => playVideo(video));
         item.addEventListener('contextmenu', (e) => showVideoContextMenu(e, video));
+
+        // Download button event for link-only items
+        if (video.link_only) {
+            const downloadBtnEl = item.querySelector('.btn-download-item');
+            if (downloadBtnEl) {
+                downloadBtnEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    downloadVideoFromList(video);
+                });
+            }
+        }
 
         videoListEl.appendChild(item);
     });
@@ -470,14 +635,31 @@ async function playVideo(video) {
     const playerContainer = document.getElementById('playerContainer');
     playerContainer.classList.remove('d-none');
 
-    // Set video source - use folder-aware endpoint if folder is available
     const videoPlayer = document.getElementById('videoPlayer');
-    if (video.folder) {
-        videoPlayer.src = `/api/videos/${encodeURIComponent(video.folder)}/${encodeURIComponent(video.id)}`;
+    const linkOnlyOverlay = document.getElementById('linkOnlyOverlay');
+
+    // Handle link-only items
+    if (video.link_only) {
+        videoPlayer.classList.add('d-none');
+        linkOnlyOverlay.classList.remove('d-none');
+        // Show thumbnail as background
+        linkOnlyOverlay.style.backgroundImage = video.local_thumbnail
+            ? `url(/api/thumbnails/${encodeURIComponent(video.id)})`
+            : `url(${video.thumbnail})`;
+        linkOnlyOverlay.style.backgroundSize = 'cover';
+        linkOnlyOverlay.style.backgroundPosition = 'center';
     } else {
-        videoPlayer.src = `/api/video/${encodeURIComponent(video.id)}`;
+        videoPlayer.classList.remove('d-none');
+        linkOnlyOverlay.classList.add('d-none');
+
+        // Set video source
+        if (video.folder) {
+            videoPlayer.src = `/api/videos/${encodeURIComponent(video.folder)}/${encodeURIComponent(video.id)}`;
+        } else {
+            videoPlayer.src = `/api/video/${encodeURIComponent(video.id)}`;
+        }
+        videoPlayer.load();
     }
-    videoPlayer.load();
 
     // Set video details
     document.getElementById('playerTitle').textContent = video.title;
@@ -495,25 +677,41 @@ async function playVideo(video) {
     document.getElementById('playerDuration').innerHTML =
         `<i class="bi bi-clock me-1"></i>${video.duration_str || ''}`;
 
-    const youtubeLink = document.getElementById('playerYoutubeLink');
+    // Platform badge
+    const platform = video.platform || detectPlatform(video.url);
+    const platformInfo = getPlatformInfo(platform);
+    const platformBadge = document.getElementById('playerPlatform');
+    platformBadge.innerHTML = `<i class="bi ${platformInfo.icon} ${platformInfo.color}"></i> ${platformInfo.name}`;
+    platformBadge.className = `platform-badge ${platform}`;
+
+    // Source link (generic for all platforms)
+    const sourceLink = document.getElementById('playerSourceLink');
     if (video.url) {
-        youtubeLink.href = video.url;
-        youtubeLink.classList.remove('d-none');
-        youtubeLink.onclick = (e) => {
+        sourceLink.href = video.url;
+        sourceLink.classList.remove('d-none');
+        sourceLink.innerHTML = `<i class="bi ${platformInfo.icon} me-1"></i>${platformInfo.name}에서 보기`;
+        sourceLink.onclick = (e) => {
             e.preventDefault();
             openExternalLink(video.url);
         };
     } else {
-        youtubeLink.classList.add('d-none');
+        sourceLink.classList.add('d-none');
     }
 
+    // Description with clickable timestamps
     const description = document.getElementById('playerDescription');
     if (video.description) {
-        description.textContent = video.description;
+        description.innerHTML = parseTimestamps(video.description);
         description.classList.remove('d-none');
     } else {
-        description.classList.add('d-none');
+        description.innerHTML = '<em class="text-muted">상세정보 없음</em>';
     }
+
+    // Hide edit sections
+    document.getElementById('titleEditSection')?.classList.add('d-none');
+    document.getElementById('descEditSection')?.classList.add('d-none');
+    document.getElementById('playerTitle')?.classList.remove('d-none');
+    document.querySelector('.video-description')?.classList.remove('d-none');
 
     // Render tags
     renderTags(video.tags || []);
@@ -521,6 +719,39 @@ async function playVideo(video) {
     // Load all tags for autocomplete
     loadAllTags();
 }
+
+// Parse timestamps in description and make them clickable
+function parseTimestamps(text) {
+    if (!text) return '';
+
+    // Match timestamps like 0:00, 00:00, 0:00:00, 00:00:00
+    const timestampRegex = /\b(\d{1,2}:)?(\d{1,2}):(\d{2})\b/g;
+
+    return escapeHtml(text).replace(timestampRegex, (match) => {
+        const seconds = timestampToSeconds(match);
+        return `<span class="timestamp-link" data-time="${seconds}">${match}</span>`;
+    });
+}
+
+function timestampToSeconds(timestamp) {
+    const parts = timestamp.split(':').map(Number);
+    if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return parts[0] * 60 + parts[1];
+}
+
+// Add click handler for timestamps
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('timestamp-link')) {
+        const time = parseInt(e.target.dataset.time);
+        const videoPlayer = document.getElementById('videoPlayer');
+        if (videoPlayer && !currentPlayingVideo?.link_only) {
+            videoPlayer.currentTime = time;
+            videoPlayer.play();
+        }
+    }
+});
 
 function openExternalLink(url) {
     // Try PyWebView API first
@@ -613,6 +844,19 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function highlightText(text, query) {
+    if (!text) return '';
+    const escaped = escapeHtml(text);
+    if (!query || !query.trim()) return escaped;
+
+    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+    return escaped.replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
+function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // ===== Tag Functions =====
@@ -835,9 +1079,15 @@ function showInitialSetupModal() {
         setupAlert.className = 'alert alert-info setup-alert mb-4';
         setupAlert.innerHTML = `
             <i class="bi bi-info-circle me-2"></i>
-            <strong>Welcome!</strong> Please set the content folder to start using the app.
+            <strong>Welcome to ClickClipDown!</strong> Please set the content folder and default folder name to start using the app.
         `;
         modalBody.insertBefore(setupAlert, modalBody.firstChild);
+    }
+
+    // Show default folder section prominently during initial setup
+    const defaultFolderSection = document.getElementById('defaultFolderSection');
+    if (defaultFolderSection) {
+        defaultFolderSection.classList.add('initial-setup-highlight');
     }
 
     // Hide close button until configured
@@ -854,6 +1104,9 @@ function showInitialSetupModal() {
             if (closeBtn) closeBtn.classList.remove('d-none');
             if (footerCloseBtn) footerCloseBtn.classList.remove('d-none');
             if (setupAlert) setupAlert.remove();
+            if (defaultFolderSection) {
+                defaultFolderSection.classList.remove('initial-setup-highlight');
+            }
         }
     };
 
@@ -900,6 +1153,12 @@ function applySettings() {
     if (contentPathInput) {
         contentPathInput.value = appSettings.content_path || '';
     }
+
+    // Update default folder input
+    const defaultFolderInput = document.getElementById('defaultFolderInput');
+    if (defaultFolderInput) {
+        defaultFolderInput.value = appSettings.default_folder || '00_Inbox';
+    }
 }
 
 function initSettingsModal() {
@@ -916,30 +1175,106 @@ function initSettingsModal() {
     if (selectContentFolderBtn) {
         selectContentFolderBtn.addEventListener('click', selectContentFolder);
     }
+
+    // Open content folder button
+    const openContentFolderBtn = document.getElementById('openContentFolderBtn');
+    if (openContentFolderBtn) {
+        openContentFolderBtn.addEventListener('click', openContentFolder);
+    }
+
+    // Default folder name save button
+    const saveDefaultFolderBtn = document.getElementById('saveDefaultFolderBtn');
+    if (saveDefaultFolderBtn) {
+        saveDefaultFolderBtn.addEventListener('click', saveDefaultFolder);
+    }
+
+    // Default folder input
+    const defaultFolderInput = document.getElementById('defaultFolderInput');
+    if (defaultFolderInput) {
+        defaultFolderInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') saveDefaultFolder();
+        });
+    }
 }
 
 async function selectContentFolder() {
     // Try PyWebView API first
     if (window.pywebview && window.pywebview.api && window.pywebview.api.select_content_folder) {
-        const path = await window.pywebview.api.select_content_folder();
-        if (path) {
-            document.getElementById('contentPathInput').value = path;
-            appSettings.content_path = path;
-            loadFolders();
-            updateDownloadFolderSelect();
-        }
-    } else {
-        // Fallback: prompt user
-        const path = prompt('Enter content folder path:');
-        if (path) {
-            const result = await saveSettings({ content_path: path });
-            if (result.success) {
+        try {
+            const path = await window.pywebview.api.select_content_folder();
+            if (path) {
+                document.getElementById('contentPathInput').value = path;
+                appSettings.content_path = path;
+                await saveSettings({ content_path: path });
                 loadFolders();
                 updateDownloadFolderSelect();
-            } else {
-                alert('Invalid path.');
+            }
+        } catch (error) {
+            console.error('PyWebView select_content_folder error:', error);
+            selectContentFolderFallback();
+        }
+    } else {
+        selectContentFolderFallback();
+    }
+}
+
+async function selectContentFolderFallback() {
+    const path = prompt('콘텐츠 폴더 경로를 입력하세요:');
+    if (path) {
+        const result = await saveSettings({ content_path: path });
+        if (result.success) {
+            document.getElementById('contentPathInput').value = appSettings.content_path;
+            loadFolders();
+            updateDownloadFolderSelect();
+        } else {
+            alert('유효하지 않은 경로입니다.');
+        }
+    }
+}
+
+async function openContentFolder() {
+    if (!appSettings.content_path) {
+        alert('Content folder is not set.');
+        return;
+    }
+
+    try {
+        await fetch('/api/open-content-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: appSettings.content_path })
+        });
+    } catch (error) {
+        console.error('Open content folder error:', error);
+    }
+}
+
+async function saveDefaultFolder() {
+    const input = document.getElementById('defaultFolderInput');
+    const newName = input.value.trim();
+
+    if (!newName) {
+        alert('Please enter a folder name.');
+        return;
+    }
+
+    try {
+        const result = await saveSettings({ default_folder: newName });
+        if (result.success) {
+            // Rename the default folder if it exists
+            const response = await fetch('/api/rename-default-folder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_name: newName })
+            });
+            const data = await response.json();
+            if (data.success) {
+                loadFolders();
+                updateDownloadFolderSelect();
             }
         }
+    } catch (error) {
+        console.error('Save default folder error:', error);
     }
 }
 
@@ -1018,7 +1353,14 @@ function renderFolderList() {
 
 function selectFolderItem(folderName) {
     currentFolder = folderName;
+    // Clear search when folder is selected
+    searchQuery = '';
+    const searchInput = document.getElementById('librarySearchInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
     renderFolderList();
+    switchPage('library');
     loadVideoLibrary();
 }
 
@@ -1132,7 +1474,8 @@ async function confirmRenameFolder() {
 }
 
 async function deleteFolder(name) {
-    if (!confirm(`Delete folder "${name}"? Videos will be moved to 00_Inbox.`)) {
+    const defaultFolder = appSettings.default_folder || '00_Inbox';
+    if (!confirm(`Delete folder "${name}"? Videos will be moved to ${defaultFolder}.`)) {
         return;
     }
 
@@ -1161,10 +1504,18 @@ function updateDownloadFolderSelect() {
     const select = document.getElementById('downloadFolderSelect');
     if (!select) return;
 
-    select.innerHTML = '<option value="00_Inbox" selected>00_Inbox (Default)</option>';
+    const defaultFolder = appSettings.default_folder || '00_Inbox';
+    select.innerHTML = '';
+
+    // Add default folder first
+    const defaultOption = document.createElement('option');
+    defaultOption.value = defaultFolder;
+    defaultOption.textContent = `${defaultFolder} (Default)`;
+    defaultOption.selected = true;
+    select.appendChild(defaultOption);
 
     folders.forEach(folder => {
-        if (folder.name !== '00_Inbox') {
+        if (folder.name !== defaultFolder) {
             const option = document.createElement('option');
             option.value = folder.name;
             option.textContent = folder.name;
@@ -1463,4 +1814,234 @@ async function handleFolderDrop(e, targetFolder) {
     } catch (error) {
         console.error('Drop error:', error);
     }
+}
+
+// ===== Save Link Only =====
+async function saveLinkOnly() {
+    if (!currentVideoInfo) return;
+
+    const folderSelect = document.getElementById('downloadFolderSelect');
+    const folder = folderSelect ? folderSelect.value : appSettings.default_folder;
+
+    try {
+        const response = await fetch('/api/save-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: currentVideoInfo.url,
+                folder: folder
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            // Show completion
+            document.getElementById('completeFilename').textContent = '링크가 저장되었습니다';
+            completeSection.classList.remove('d-none');
+            videoInfo.classList.add('d-none');
+        } else {
+            showError(data.error || '링크 저장에 실패했습니다.');
+        }
+    } catch (error) {
+        showError('서버 연결 오류가 발생했습니다.');
+        console.error(error);
+    }
+}
+
+// ===== Download Later (for link-only items) =====
+async function downloadLater() {
+    if (!currentPlayingVideo || !currentPlayingVideo.link_only) return;
+
+    try {
+        const response = await fetch('/api/download-later', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                video_id: currentPlayingVideo.id,
+                folder: currentPlayingVideo.folder
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert('다운로드가 시작되었습니다.');
+            // Refresh library after download completes
+            setTimeout(loadVideoLibrary, 2000);
+        } else {
+            alert(data.error || '다운로드에 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('Download later error:', error);
+    }
+}
+
+// ===== Download Video From List (for link-only items in list) =====
+async function downloadVideoFromList(video) {
+    try {
+        const response = await fetch('/api/download-later', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                video_id: video.id,
+                folder: video.folder
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('다운로드가 시작되었습니다.');
+            // Refresh library after download completes
+            setTimeout(loadVideoLibrary, 2000);
+        } else {
+            showToast(data.error || '다운로드 실패', 'error');
+        }
+    } catch (error) {
+        console.error('Download error:', error);
+    }
+}
+
+// ===== Toast Notification =====
+function showToast(message, type = 'success') {
+    // Create toast container if not exists
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast-message ${type}`;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ===== Platform Filter =====
+function togglePlatformFilter() {
+    const dropdown = document.getElementById('platformFilterDropdown');
+    dropdown.classList.toggle('d-none');
+}
+
+function handlePlatformFilterChange(e) {
+    const item = e.target.closest('.platform-filter-item');
+    const platform = item.dataset.platform;
+
+    if (platform === 'all') {
+        // Toggle all
+        const allChecked = e.target.checked;
+        document.querySelectorAll('.platform-filter-item input').forEach(cb => {
+            cb.checked = allChecked;
+        });
+        platformFilters = allChecked
+            ? ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'other']
+            : [];
+    } else {
+        if (e.target.checked) {
+            if (!platformFilters.includes(platform)) {
+                platformFilters.push(platform);
+            }
+        } else {
+            platformFilters = platformFilters.filter(p => p !== platform);
+        }
+
+        // Update "All" checkbox
+        const allCheckbox = document.getElementById('filterAll');
+        allCheckbox.checked = platformFilters.length === 6;
+    }
+
+    renderVideoList();
+}
+
+// ===== Title Edit =====
+function startEditTitle() {
+    const title = document.getElementById('playerTitle');
+    const editSection = document.getElementById('titleEditSection');
+    const input = document.getElementById('titleEditInput');
+
+    title.classList.add('d-none');
+    editSection.classList.remove('d-none');
+    input.value = currentPlayingVideo?.title || '';
+    input.focus();
+}
+
+function cancelEditTitle() {
+    document.getElementById('playerTitle').classList.remove('d-none');
+    document.getElementById('titleEditSection').classList.add('d-none');
+}
+
+async function saveTitle() {
+    const newTitle = document.getElementById('titleEditInput').value.trim();
+    if (!newTitle || !currentPlayingVideo) {
+        cancelEditTitle();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/update-metadata/${encodeURIComponent(currentPlayingVideo.id)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: newTitle })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            currentPlayingVideo.title = newTitle;
+            document.getElementById('playerTitle').textContent = newTitle;
+            loadVideoLibrary();
+        }
+    } catch (error) {
+        console.error('Save title error:', error);
+    }
+
+    cancelEditTitle();
+}
+
+// ===== Description Edit =====
+function startEditDescription() {
+    const desc = document.querySelector('.video-description');
+    const editSection = document.getElementById('descEditSection');
+    const input = document.getElementById('descEditInput');
+
+    desc.classList.add('d-none');
+    editSection.classList.remove('d-none');
+    input.value = currentPlayingVideo?.description || '';
+    input.focus();
+}
+
+function cancelEditDescription() {
+    document.querySelector('.video-description').classList.remove('d-none');
+    document.getElementById('descEditSection').classList.add('d-none');
+}
+
+async function saveDescription() {
+    const newDesc = document.getElementById('descEditInput').value;
+    if (!currentPlayingVideo) {
+        cancelEditDescription();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/update-metadata/${encodeURIComponent(currentPlayingVideo.id)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: newDesc })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            currentPlayingVideo.description = newDesc;
+            document.getElementById('playerDescription').innerHTML = parseTimestamps(newDesc);
+        }
+    } catch (error) {
+        console.error('Save description error:', error);
+    }
+
+    cancelEditDescription();
 }
