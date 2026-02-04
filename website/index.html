@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClickClipDown - YouTube Video Downloader</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff0000;
+            --dark-bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 80px 0;
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-img {
+            max-width: 120px;
+            margin-bottom: 20px;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .hero .lead {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #e52d27 0%, #b31217 100%);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 50px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(229, 45, 39, 0.4);
+        }
+
+        .btn-download i {
+            margin-right: 10px;
+        }
+
+        .version-badge {
+            background: rgba(255,255,255,0.1);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-left: 15px;
+        }
+
+        .screenshot-container {
+            position: relative;
+            margin-top: 40px;
+        }
+
+        .screenshot-img {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .features {
+            padding: 80px 0;
+            background-color: var(--dark-bg);
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            height: 100%;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #e52d27 0%, #b31217 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .requirements {
+            padding: 60px 0;
+            background: var(--card-bg);
+        }
+
+        .requirements h2 {
+            margin-bottom: 30px;
+        }
+
+        .req-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .req-item i {
+            color: #4ade80;
+            margin-right: 10px;
+        }
+
+        footer {
+            padding: 40px 0;
+            background: var(--dark-bg);
+            border-top: 1px solid #333;
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            .hero {
+                padding: 40px 0;
+                min-height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <img src="assets/logo.png" alt="ClickClipDown Logo" class="logo-img">
+                    <h1>ClickClipDown</h1>
+                    <p class="lead">YouTube 영상과 오디오를 손쉽게 다운로드하세요. 깔끔한 인터페이스, 빠른 속도, 무료로 제공됩니다.</p>
+                    <div class="d-flex align-items-center flex-wrap gap-3">
+                        <a href="https://github.com/for302/youtube_down/releases/download/v0.6.0/ClickClipDown_Setup_0.6.0.exe" class="btn btn-danger btn-download">
+                            <i class="bi bi-download"></i>Download for Windows
+                        </a>
+                        <span class="version-badge">v0.6.0</span>
+                    </div>
+                    <p class="mt-3 text-secondary small">
+                        <i class="bi bi-windows me-1"></i>Windows 10/11 지원 | 무료 & 오픈소스
+                    </p>
+                </div>
+                <div class="col-lg-6">
+                    <div class="screenshot-container">
+                        <img src="assets/screenshot.svg" alt="ClickClipDown Screenshot" class="screenshot-img">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="text-center mb-5">주요 기능</h2>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-cloud-download"></i>
+                        </div>
+                        <h3>고품질 다운로드</h3>
+                        <p>최대 4K 해상도의 비디오와 고음질 오디오를 다운로드할 수 있습니다.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-music-note-beamed"></i>
+                        </div>
+                        <h3>MP3 추출</h3>
+                        <p>영상에서 오디오만 추출하여 MP3 파일로 저장합니다.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-folder2-open"></i>
+                        </div>
+                        <h3>폴더 관리</h3>
+                        <p>다운로드한 영상을 폴더별로 정리하고 관리할 수 있습니다.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-collection-play"></i>
+                        </div>
+                        <h3>내장 플레이어</h3>
+                        <p>다운로드한 영상을 앱 내에서 바로 재생할 수 있습니다.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <h3>라이브러리 검색</h3>
+                        <p>다운로드한 영상을 제목, 채널명으로 빠르게 검색합니다.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </div>
+                        <h3>자동 업데이트</h3>
+                        <p>새 버전이 출시되면 자동으로 알림을 받고 업데이트할 수 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Requirements Section -->
+    <section class="requirements">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6">
+                    <h2>시스템 요구사항</h2>
+                    <div class="req-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Windows 10 / 11 (64-bit)</span>
+                    </div>
+                    <div class="req-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>인터넷 연결</span>
+                    </div>
+                    <div class="req-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>100MB 이상의 여유 공간</span>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h2>포함된 구성요소</h2>
+                    <div class="req-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>yt-dlp (YouTube 다운로드 엔진)</span>
+                    </div>
+                    <div class="req-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>FFmpeg (오디오/비디오 처리)</span>
+                    </div>
+                    <div class="req-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>모든 의존성 패키지 포함</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; 2024 ClickClipDown. MIT License.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="https://github.com/for302/youtube_down" class="me-3">
+                        <i class="bi bi-github me-1"></i>GitHub
+                    </a>
+                    <a href="https://github.com/for302/youtube_down/releases">
+                        <i class="bi bi-tag me-1"></i>Releases
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

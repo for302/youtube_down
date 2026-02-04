@@ -1,0 +1,7 @@
+{
+  "version": "0.6.0",
+  "download_url": "https://github.com/for302/youtube_down/releases/download/v0.6.0/ClickClipDown_Setup_0.6.0.exe",
+  "asset_name": "ClickClipDown_Setup_0.6.0.exe",
+  "release_notes": "v0.6.0 - Modular Architecture\n\n- Refactored codebase into modular architecture\n- Improved stability and performance\n- Bug fixes and improvements",
+  "release_url": "https://github.com/for302/youtube_down/releases/tag/v0.6.0"
+}

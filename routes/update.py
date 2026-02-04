@@ -11,7 +11,7 @@ from flask import Blueprint, request, jsonify
 import requests
 from packaging import version as pkg_version
 
-from version import __version__, __github_repo__
+from version import __version__, __github_repo__, UPDATE_API_URL
 from .shared import (
     get_update_progress_store,
     reset_update_progress_store,
@@ -23,56 +23,13 @@ update_bp = Blueprint('update', __name__)
 
 @update_bp.route('/api/check-update')
 def check_update():
-    """Check for updates from GitHub releases"""
+    """Check for updates from Vercel API or GitHub releases"""
     try:
-        url = f"https://api.github.com/repos/{__github_repo__}/releases/latest"
-        response = requests.get(url, timeout=10)
-
-        if response.status_code == 404:
-            return jsonify({
-                'success': True,
-                'has_update': False,
-                'current': __version__,
-                'message': 'No releases found'
-            })
-
-        if response.ok:
-            latest = response.json()
-            latest_version = latest['tag_name'].lstrip('v')
-
-            try:
-                has_update = pkg_version.parse(latest_version) > pkg_version.parse(__version__)
-            except:
-                has_update = False
-
-            # Find installer asset (prefer exe, fallback to msi)
-            download_url = None
-            asset_name = None
-            for asset in latest.get('assets', []):
-                name = asset['name']
-                # Support both .exe and .msi installers
-                if (name.endswith('.exe') and 'Setup' in name) or name.endswith('.msi'):
-                    download_url = asset['browser_download_url']
-                    asset_name = name
-                    # Prefer .exe if available, but accept .msi
-                    if name.endswith('.exe'):
-                        break
-
-            return jsonify({
-                'success': True,
-                'current': __version__,
-                'latest': latest_version,
-                'has_update': has_update,
-                'download_url': download_url,
-                'asset_name': asset_name,
-                'release_notes': latest.get('body', ''),
-                'release_url': latest.get('html_url', '')
-            })
+        # Use Vercel API if configured, otherwise fall back to GitHub API
+        if UPDATE_API_URL:
+            return _check_update_vercel()
         else:
-            return jsonify({
-                'success': False,
-                'error': f'GitHub API error: {response.status_code}'
-            })
+            return _check_update_github()
     except requests.exceptions.Timeout:
         return jsonify({
             'success': False,
@@ -82,6 +39,88 @@ def check_update():
         return jsonify({
             'success': False,
             'error': str(e)
+        })
+
+
+def _check_update_vercel():
+    """Check for updates from Vercel API (version.json)"""
+    response = requests.get(UPDATE_API_URL, timeout=10)
+
+    if not response.ok:
+        return jsonify({
+            'success': False,
+            'error': f'API error: {response.status_code}'
+        })
+
+    data = response.json()
+    latest_version = data.get('version', '0.0.0')
+
+    try:
+        has_update = pkg_version.parse(latest_version) > pkg_version.parse(__version__)
+    except:
+        has_update = False
+
+    return jsonify({
+        'success': True,
+        'current': __version__,
+        'latest': latest_version,
+        'has_update': has_update,
+        'download_url': data.get('download_url'),
+        'asset_name': data.get('asset_name'),
+        'release_notes': data.get('release_notes', ''),
+        'release_url': data.get('release_url', '')
+    })
+
+
+def _check_update_github():
+    """Check for updates from GitHub releases (fallback)"""
+    url = f"https://api.github.com/repos/{__github_repo__}/releases/latest"
+    response = requests.get(url, timeout=10)
+
+    if response.status_code == 404:
+        return jsonify({
+            'success': True,
+            'has_update': False,
+            'current': __version__,
+            'message': 'No releases found'
+        })
+
+    if response.ok:
+        latest = response.json()
+        latest_version = latest['tag_name'].lstrip('v')
+
+        try:
+            has_update = pkg_version.parse(latest_version) > pkg_version.parse(__version__)
+        except:
+            has_update = False
+
+        # Find installer asset (prefer exe, fallback to msi)
+        download_url = None
+        asset_name = None
+        for asset in latest.get('assets', []):
+            name = asset['name']
+            # Support both .exe and .msi installers
+            if (name.endswith('.exe') and 'Setup' in name) or name.endswith('.msi'):
+                download_url = asset['browser_download_url']
+                asset_name = name
+                # Prefer .exe if available, but accept .msi
+                if name.endswith('.exe'):
+                    break
+
+        return jsonify({
+            'success': True,
+            'current': __version__,
+            'latest': latest_version,
+            'has_update': has_update,
+            'download_url': download_url,
+            'asset_name': asset_name,
+            'release_notes': latest.get('body', ''),
+            'release_url': latest.get('html_url', '')
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': f'GitHub API error: {response.status_code}'
         })
 
 
