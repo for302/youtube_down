@@ -49,6 +49,10 @@ def save_settings():
     if 'default_folder' in data:
         config.default_folder = data['default_folder']
 
+    # Handle developer mode change
+    if 'developer_mode' in data:
+        config.set('developer_mode', bool(data['developer_mode']))
+
     return jsonify({
         'success': True,
         'settings': config.get_all()

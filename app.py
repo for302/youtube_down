@@ -180,6 +180,28 @@ class Api:
         except:
             return False
 
+    def toggle_devtools(self, enable):
+        """Toggle developer tools window"""
+        try:
+            window = webview.windows[0]
+            if enable:
+                # For EdgeChromium/WebView2 on Windows
+                if hasattr(window, '_impl'):
+                    impl = window._impl
+                    # Try WebView2 (EdgeChromium)
+                    if hasattr(impl, 'browser') and impl.browser:
+                        impl.browser.CoreWebView2.OpenDevToolsWindow()
+                        return True
+                    # Try CEF
+                    elif hasattr(impl, 'browser_view'):
+                        impl.browser_view.GetBrowser().ShowDevTools()
+                        return True
+            # Note: Closing dev tools programmatically is not well supported
+            return True
+        except Exception as e:
+            print(f"Could not toggle devtools: {e}")
+            return False
+
 
 def run_flask():
     """Run Flask in a separate thread"""

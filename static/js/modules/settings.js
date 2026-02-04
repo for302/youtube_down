@@ -69,6 +69,12 @@ export function applySettings() {
     if (defaultFolderInput) {
         defaultFolderInput.value = state.appSettings.default_folder || '00_Inbox';
     }
+
+    // Update developer mode toggle
+    const developerModeToggle = document.getElementById('developerModeToggle');
+    if (developerModeToggle) {
+        developerModeToggle.checked = state.appSettings.developer_mode || false;
+    }
 }
 
 /**
@@ -166,6 +172,12 @@ export function initSettingsModal() {
             if (e.key === 'Enter') saveDefaultFolder();
         });
     }
+
+    // Developer mode toggle
+    const developerModeToggle = document.getElementById('developerModeToggle');
+    if (developerModeToggle) {
+        developerModeToggle.addEventListener('change', toggleDeveloperMode);
+    }
 }
 
 /**
@@ -249,5 +261,25 @@ export async function saveDefaultFolder() {
         }
     } catch (error) {
         console.error('Save default folder error:', error);
+    }
+}
+
+/**
+ * Toggle developer mode (open/close dev tools)
+ */
+export async function toggleDeveloperMode() {
+    const toggle = document.getElementById('developerModeToggle');
+    const enabled = toggle.checked;
+
+    try {
+        // Save setting
+        await saveSettings({ developer_mode: enabled });
+
+        // Toggle dev tools via PyWebView API
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_devtools) {
+            await window.pywebview.api.toggle_devtools(enabled);
+        }
+    } catch (error) {
+        console.error('Toggle developer mode error:', error);
     }
 }

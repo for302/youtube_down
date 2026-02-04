@@ -29,6 +29,7 @@ class ConfigManager:
         'content_path': '',  # Empty means not configured
         'theme': 'light',  # 'light' or 'dark'
         'default_folder': '00_Inbox',
+        'developer_mode': False,  # Developer tools enabled
     }
 
     def __init__(self):
