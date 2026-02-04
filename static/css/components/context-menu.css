@@ -1,0 +1,86 @@
+/* Context Menu Styles */
+
+.context-menu {
+    position: fixed;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    z-index: 10000;
+    padding: 6px 0;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    font-size: 0.9rem;
+}
+
+.context-menu-item:hover {
+    background: var(--hover-bg);
+}
+
+.context-menu-item i {
+    font-size: 1rem;
+    width: 18px;
+    text-align: center;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 6px 0;
+}
+
+.context-menu-danger {
+    color: var(--primary-color);
+}
+
+.context-menu-danger:hover {
+    background: var(--highlight-bg);
+}
+
+/* Platform Filter Dropdown */
+.platform-filter-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 10px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 8px 0;
+    min-width: 180px;
+    z-index: 1000;
+}
+
+.platform-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.platform-filter-item:hover {
+    background: var(--hover-bg);
+}
+
+.platform-filter-item input {
+    cursor: pointer;
+}
+
+.platform-filter-item label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    flex: 1;
+}

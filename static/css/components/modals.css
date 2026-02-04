@@ -1,0 +1,40 @@
+/* Modal Styles */
+
+.modal-content {
+    border-radius: 12px;
+}
+
+/* Update Modal Styles */
+.release-notes {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+}
+
+/* Update progress bar */
+#updateProgressBar {
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    transition: width 0.3s ease;
+}
+
+/* Update modal sections */
+#updateCompleteSection i {
+    color: #22c55e;
+}
+
+/* Update status in settings */
+#updateStatus {
+    min-width: 150px;
+}
+
+/* Initial Setup Highlight */
+.initial-setup-highlight {
+    background: linear-gradient(135deg, #f0ebff 0%, #e0d5ff 100%);
+    border-radius: 8px;
+    padding: 15px;
+    margin: -5px;
+    border: 2px solid var(--secondary-color);
+}
+
+[data-theme="dark"] .initial-setup-highlight {
+    background: linear-gradient(135deg, #2d2540 0%, #3d3055 100%);
+}

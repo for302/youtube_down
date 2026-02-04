@@ -1,0 +1,116 @@
+/* Download Page Styles */
+
+/* Download Hero Section */
+.download-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px 30px;
+}
+
+.hero-logo {
+    width: 120px;
+    height: auto;
+    margin-bottom: 30px;
+}
+
+.supported-platforms {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.platform-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--hover-bg);
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    transition: all 0.2s ease;
+    cursor: default;
+    text-decoration: none;
+}
+
+/* Clickable platform icons */
+a.platform-icon {
+    cursor: pointer;
+}
+
+a.platform-icon:hover {
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.platform-icon.more {
+    cursor: default;
+}
+
+.platform-icon.more:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Naver icon with image */
+.platform-icon.naver img {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+}
+
+.platform-icon:nth-child(1) { color: #ff0000; } /* YouTube */
+.platform-icon:nth-child(2) { color: #e4405f; } /* Instagram */
+.platform-icon:nth-child(3) { color: #000000; } /* TikTok */
+.platform-icon:nth-child(4) { color: #1877f2; } /* Facebook */
+.platform-icon:nth-child(5) { color: #000000; } /* X */
+.platform-icon:nth-child(6) { color: #1ab7ea; } /* Vimeo */
+.platform-icon:nth-child(7) { color: #ff4500; } /* Reddit */
+.platform-icon:nth-child(8) { color: #e60023; } /* Pinterest */
+.platform-icon:nth-child(9) { color: #00a1d6; } /* Bilibili */
+.platform-icon:nth-child(10) { color: #ff5500; } /* SoundCloud */
+.platform-icon:nth-child(11) { color: #03c75a; } /* Naver */
+.platform-icon:nth-child(12) { color: var(--text-muted); } /* Others (...) */
+
+/* Dark theme: TikTok and X icons need lighter color */
+[data-theme="dark"] .platform-icon:nth-child(3),
+[data-theme="dark"] .platform-icon:nth-child(5) {
+    color: #ffffff;
+}
+
+/* Progress Bar */
+.progress {
+    border-radius: 12px;
+    background-color: var(--hover-bg);
+    overflow: hidden;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-radius: 12px;
+    transition: width 0.3s ease;
+}
+
+#progressSection .card-body {
+    padding: 24px;
+}
+
+/* Complete Section */
+#completeSection {
+    background: linear-gradient(135deg, #fff8f8 0%, #ffeaea 100%);
+}
+
+[data-theme="dark"] #completeSection {
+    background: linear-gradient(135deg, #2c2020 0%, #3d2525 100%);
+}
+
+/* Loading Spinner */
+#loadingSpinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}

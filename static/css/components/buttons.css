@@ -1,0 +1,119 @@
+/* Button Styles */
+
+/* Disabled state */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Nav Pills */
+.nav-pills .nav-link {
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+}
+
+.nav-pills .nav-link.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.nav-pills .nav-link:hover:not(.active) {
+    background-color: var(--hover-bg);
+}
+
+[data-theme="dark"] .nav-pills .nav-link:hover:not(.active) {
+    background-color: var(--hover-bg);
+}
+
+/* Resolution Buttons */
+.resolution-btn {
+    min-width: 80px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.resolution-btn.active {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: white;
+}
+
+.resolution-btn:hover:not(.active) {
+    background-color: var(--hover-bg);
+}
+
+/* Quality Buttons */
+.quality-btn {
+    min-width: 100px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.quality-btn.active {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: white;
+}
+
+/* Download Buttons */
+#downloadVideoBtn,
+#downloadAudioBtn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: transform 0.2s ease;
+}
+
+#downloadVideoBtn:hover,
+#downloadAudioBtn:hover {
+    transform: translateY(-2px);
+}
+
+/* Download Buttons Layout */
+#videoOptions .d-flex.gap-2 > button {
+    min-width: 0;
+}
+
+/* Download Item Button */
+.btn-download-item {
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-download-item:hover {
+    opacity: 0.85;
+}
+
+/* Theme Toggle */
+.theme-toggle-group {
+    display: flex;
+    gap: 10px;
+}
+
+.theme-toggle-btn {
+    flex: 1;
+    padding: 10px 20px;
+    border: 2px solid var(--border-color);
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.theme-toggle-btn:hover {
+    border-color: var(--secondary-color);
+}
+
+.theme-toggle-btn.active {
+    background: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: #fff;
+}

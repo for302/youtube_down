@@ -1,0 +1,216 @@
+/* Sidebar Styles */
+
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    border-right: 1px solid var(--sidebar-border);
+}
+
+.sidebar-header {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.sidebar-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--sidebar-text);
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 10px 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Sidebar Folders */
+.sidebar-folders {
+    display: none;
+    padding: 0 10px 10px 10px;
+    border-top: 1px solid var(--sidebar-border);
+    margin-top: 5px;
+}
+
+.sidebar-folders.show {
+    display: block;
+}
+
+.sidebar-folder-list {
+    padding-top: 8px;
+}
+
+.sidebar-folder-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 8px 20px;
+    color: var(--sidebar-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 6px;
+    margin-bottom: 2px;
+    font-size: 0.85rem;
+}
+
+.sidebar-folder-item:hover {
+    background: var(--sidebar-hover);
+}
+
+.sidebar-folder-item.active {
+    background: var(--sidebar-active);
+}
+
+.sidebar-folder-item i {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+}
+
+.sidebar-folder-item .folder-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-folder-item .folder-count {
+    font-size: 0.7rem;
+    background: var(--sidebar-hover);
+    color: var(--sidebar-text-muted);
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.sidebar-folder-item.all-folders {
+    padding-left: 12px;
+    font-weight: 500;
+}
+
+.sidebar-folder-setup {
+    padding: 10px 12px;
+    text-align: center;
+}
+
+.sidebar-folder-setup .setup-btn {
+    font-size: 0.8rem;
+    width: 100%;
+}
+
+.sidebar-add-folder-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 8px;
+    background: transparent;
+    border: 1px dashed var(--sidebar-border);
+    color: var(--sidebar-text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.8rem;
+}
+
+.sidebar-add-folder-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--sidebar-text);
+    background: var(--sidebar-hover);
+}
+
+.sidebar-folder-item.drag-over {
+    background: var(--sidebar-active);
+    outline: 2px dashed var(--primary-color);
+    outline-offset: -2px;
+}
+
+.menu-item {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+    color: var(--sidebar-text);
+}
+
+.menu-item:hover {
+    background: var(--sidebar-hover);
+}
+
+.menu-item.active {
+    background: var(--sidebar-active);
+    border-left-color: var(--primary-color);
+}
+
+.menu-item i {
+    font-size: 1.2rem;
+    color: var(--primary-color);
+}
+
+.menu-item span {
+    font-size: 0.95rem;
+}
+
+.sidebar-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--sidebar-border);
+    text-align: center;
+}
+
+/* Sidebar Logo */
+.sidebar-logo {
+    max-height: 32px;
+    width: auto;
+}
+
+/* Theme-based Logo Switching */
+/* Light mode: show logo.png (logo-light), hide logo_light.png (logo-dark) */
+img.logo-light {
+    display: inline-block !important;
+}
+
+img.logo-dark {
+    display: none !important;
+}
+
+/* Dark mode: show logo_light.png (logo-dark), hide logo.png (logo-light) */
+[data-theme="dark"] img.logo-light {
+    display: none !important;
+}
+
+[data-theme="dark"] img.logo-dark {
+    display: inline-block !important;
+}
+
+/* Settings Button */
+.settings-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    color: var(--sidebar-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.settings-btn:hover {
+    background: var(--sidebar-hover);
+    color: var(--sidebar-text);
+}
+
+.settings-btn i {
+    font-size: 1.2rem;
+}

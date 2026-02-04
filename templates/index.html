@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ClickClipDown</title>
-    <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}" type="image/png">
+    <link rel="icon" href="{{ url_for('static', filename='img/icon.ico') }}" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/style.css') }}?v=5" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=7" rel="stylesheet">
 </head>
 <body>
     <div class="app-container">
@@ -56,23 +56,18 @@
                         <img src="{{ url_for('static', filename='img/logo.png') }}" alt="ClickClipDown" class="hero-logo logo-dark">
                         <img src="{{ url_for('static', filename='img/logo_light.png') }}" alt="ClickClipDown" class="hero-logo logo-light">
                         <div class="supported-platforms">
-                            <span class="platform-icon" title="YouTube"><i class="bi bi-youtube"></i></span>
-                            <span class="platform-icon" title="Instagram"><i class="bi bi-instagram"></i></span>
-                            <span class="platform-icon" title="TikTok"><i class="bi bi-tiktok"></i></span>
-                            <span class="platform-icon" title="Facebook"><i class="bi bi-facebook"></i></span>
-                            <span class="platform-icon" title="X (Twitter)"><i class="bi bi-twitter-x"></i></span>
-                            <span class="platform-icon" title="Vimeo"><i class="bi bi-vimeo"></i></span>
-                            <span class="platform-icon" title="Twitch"><i class="bi bi-twitch"></i></span>
-                            <span class="platform-icon" title="Reddit"><i class="bi bi-reddit"></i></span>
-                            <span class="platform-icon" title="Pinterest"><i class="bi bi-pinterest"></i></span>
-                            <span class="platform-icon" title="Spotify"><i class="bi bi-spotify"></i></span>
-                            <span class="platform-icon" title="Discord"><i class="bi bi-discord"></i></span>
-                            <span class="platform-icon" title="Telegram"><i class="bi bi-telegram"></i></span>
-                            <span class="platform-icon" title="Dailymotion"><i class="bi bi-play-btn"></i></span>
-                            <span class="platform-icon" title="Bilibili"><i class="bi bi-tv"></i></span>
-                            <span class="platform-icon" title="SoundCloud"><i class="bi bi-soundwave"></i></span>
-                            <span class="platform-icon" title="Bandcamp"><i class="bi bi-music-note-beamed"></i></span>
-                            <span class="platform-icon" title="기타 1400+ 사이트"><i class="bi bi-three-dots"></i></span>
+                            <a href="#" class="platform-icon" title="YouTube" data-url="https://www.youtube.com"><i class="bi bi-youtube"></i></a>
+                            <a href="#" class="platform-icon" title="Instagram" data-url="https://www.instagram.com"><i class="bi bi-instagram"></i></a>
+                            <a href="#" class="platform-icon" title="TikTok" data-url="https://www.tiktok.com"><i class="bi bi-tiktok"></i></a>
+                            <a href="#" class="platform-icon" title="Facebook" data-url="https://www.facebook.com"><i class="bi bi-facebook"></i></a>
+                            <a href="#" class="platform-icon" title="X (Twitter)" data-url="https://www.x.com"><i class="bi bi-twitter-x"></i></a>
+                            <a href="#" class="platform-icon" title="Vimeo" data-url="https://www.vimeo.com"><i class="bi bi-vimeo"></i></a>
+                            <a href="#" class="platform-icon" title="Reddit" data-url="https://www.reddit.com"><i class="bi bi-reddit"></i></a>
+                            <a href="#" class="platform-icon" title="Pinterest" data-url="https://www.pinterest.com"><i class="bi bi-pinterest"></i></a>
+                            <a href="#" class="platform-icon" title="Bilibili" data-url="https://www.bilibili.com"><i class="bi bi-tv"></i></a>
+                            <a href="#" class="platform-icon" title="SoundCloud" data-url="https://www.soundcloud.com"><i class="bi bi-soundwave"></i></a>
+                            <a href="#" class="platform-icon naver" title="Naver" data-url="https://tv.naver.com"><img src="/static/img/platforms/naver.svg" alt="Naver"></a>
+                            <span class="platform-icon more" title="기타 1400+ 사이트"><i class="bi bi-three-dots"></i></span>
                         </div>
                     </section>
 
@@ -289,14 +284,19 @@
                                 <video id="videoPlayer" controls>
                                     Your browser does not support the video tag.
                                 </video>
-                                <!-- Download button for link-only items -->
+                                <!-- Iframe for embedding external videos -->
+                                <iframe id="videoEmbed" class="video-embed d-none" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+                                <!-- Overlay for link-only items (before play) -->
                                 <div id="linkOnlyOverlay" class="link-only-overlay d-none">
-                                    <div class="link-only-message">
-                                        <i class="bi bi-cloud"></i>
-                                        <p>링크만 저장된 영상입니다</p>
-                                        <button class="btn btn-success" id="downloadLaterBtn">
-                                            <i class="bi bi-download me-2"></i>영상 다운로드
+                                    <div class="link-only-content">
+                                        <button class="btn-play-embed" id="playEmbedBtn" title="재생">
+                                            <i class="bi bi-play-circle-fill"></i>
                                         </button>
+                                        <div class="link-only-actions">
+                                            <button class="btn btn-success btn-sm" id="downloadLaterBtn">
+                                                <i class="bi bi-download me-1"></i>다운로드
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -325,11 +325,26 @@
                                     <span id="playerPlatform" class="platform-badge">
                                         <i class="bi bi-youtube"></i> YouTube
                                     </span>
+                                    <span id="playerAudioBadge" class="platform-badge audio d-none">
+                                        <i class="bi bi-music-note-beamed"></i> MP3
+                                    </span>
+                                </div>
+                                <!-- Media Type Selector (shown when both video and audio available) -->
+                                <div class="media-type-selector d-none" id="mediaTypeSelector">
+                                    <button class="btn btn-video active" id="playVideoBtn">
+                                        <i class="bi bi-film me-1"></i>영상
+                                    </button>
+                                    <button class="btn btn-audio" id="playAudioBtn">
+                                        <i class="bi bi-music-note-beamed me-1"></i>음원
+                                    </button>
                                 </div>
                                 <div class="video-links mt-2">
                                     <a href="#" id="playerSourceLink" class="btn btn-sm btn-outline-secondary" target="_blank">
                                         <i class="bi bi-box-arrow-up-right me-1"></i>원본에서 보기
                                     </a>
+                                    <button id="playerDownloadBtn" class="btn btn-sm btn-success ms-2 d-none">
+                                        <i class="bi bi-download me-1"></i>다운로드
+                                    </button>
                                 </div>
 
                                 <!-- Tags Section -->
@@ -607,6 +622,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=4"></script>
+    <script type="module" src="{{ url_for('static', filename='js/modules/main.js') }}?v=5"></script>
 </body>
 </html>
