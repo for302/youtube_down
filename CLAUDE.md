@@ -18,9 +18,14 @@ python app.py
 # Build standalone executable
 pyinstaller build/youtube_downloader.spec
 
-# Create Windows installer (requires Inno Setup)
-# Compile build/installer.iss with Inno Setup
+# Create Windows installer
+C:\InnoSetup6\ISCC.exe build/installer.iss
 ```
+
+## Build Tools
+
+- **Inno Setup**: `C:\InnoSetup6\ISCC.exe`
+- **Output**: `dist/installer/ClickClipDown_Setup_x.x.x.exe`
 
 ## Architecture
 
