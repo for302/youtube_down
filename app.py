@@ -246,8 +246,10 @@ def main():
 
     window.events.shown += on_shown
 
-    # Start PyWebView (debug=True enables F12 developer tools)
-    webview.start(debug=True, icon=icon_path)
+    # Start PyWebView (debug mode based on developer_mode setting)
+    # When debug=True, F12 opens DevTools
+    debug_mode = config.get('developer_mode', False)
+    webview.start(debug=debug_mode, icon=icon_path)
 
 
 if __name__ == '__main__':

@@ -265,7 +265,7 @@ export async function saveDefaultFolder() {
 }
 
 /**
- * Toggle developer mode (open/close dev tools)
+ * Toggle developer mode (requires app restart)
  */
 export async function toggleDeveloperMode() {
     const toggle = document.getElementById('developerModeToggle');
@@ -275,10 +275,10 @@ export async function toggleDeveloperMode() {
         // Save setting
         await saveSettings({ developer_mode: enabled });
 
-        // Toggle dev tools via PyWebView API
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_devtools) {
-            await window.pywebview.api.toggle_devtools(enabled);
-        }
+        // Show restart notice
+        alert(enabled
+            ? 'Developer Mode enabled. Restart the app to open DevTools (F12).'
+            : 'Developer Mode disabled. Restart the app to apply.');
     } catch (error) {
         console.error('Toggle developer mode error:', error);
     }
