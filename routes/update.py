@@ -139,8 +139,13 @@ def download_update():
 
     def download_installer():
         try:
-            # Create temp directory for download
-            temp_dir = tempfile.gettempdir()
+            # Use standard Windows temp folder (avoid ESTsoft/other redirected temp)
+            if sys.platform == 'win32':
+                temp_dir = os.path.join(os.environ.get('LOCALAPPDATA', tempfile.gettempdir()), 'Temp')
+                if not os.path.exists(temp_dir):
+                    temp_dir = tempfile.gettempdir()
+            else:
+                temp_dir = tempfile.gettempdir()
             filepath = os.path.join(temp_dir, asset_name)
 
             # Download with progress

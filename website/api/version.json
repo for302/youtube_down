@@ -1,7 +1,7 @@
 {
-  "version": "0.6.2",
-  "download_url": "https://github.com/for302/youtube_down/releases/download/v0.6.2/ClickClipDown_Setup_0.6.2.exe",
-  "asset_name": "ClickClipDown_Setup_0.6.2.exe",
-  "release_notes": "v0.6.2 - Developer Mode Fix\n\n- DevTools disabled by default\n- Enable in Settings, requires app restart",
-  "release_url": "https://github.com/for302/youtube_down/releases/tag/v0.6.2"
+  "version": "0.6.3",
+  "download_url": "https://github.com/for302/youtube_down/releases/download/v0.6.3/ClickClipDown_Setup_0.6.3.exe",
+  "asset_name": "ClickClipDown_Setup_0.6.3.exe",
+  "release_notes": "v0.6.3 - Update Download Fix\n\n- Fixed update download path issue on some systems\n- Use standard Windows temp folder",
+  "release_url": "https://github.com/for302/youtube_down/releases/tag/v0.6.3"
 }
